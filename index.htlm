@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAELSTROM - Survive the Sea</title>
+    <style>
+        :root { --primary: #1a6fa8; --accent: #e8c97d; --ui-bg: rgba(10, 25, 40, 0.85); }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: var(--primary); color: white; user-select: none; }
+        
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; }
+
+        /* HUD STYLING */
+        #hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start; }
+        
+        .hud-panel { background: var(--ui-bg); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 10px 15px; backdrop-filter: blur(5px); }
+        
+        #health-bar-container { width: 200px; height: 20px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; position: relative; }
+        #health-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff4e4e, #ff8e8e); transition: width 0.3s; }
+        #health-text { position: absolute; width: 100%; text-align: center; top: 2px; font-size: 12px; font-weight: bold; text-shadow: 0 1px 2px black; }
+
+        #timer { font-size: 24px; font-weight: bold; color: var(--accent); letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        
+        #stats { text-align: right; }
+        #score { font-size: 20px; color: gold; }
+        #level { font-size: 14px; color: #aaa; }
+
+        /* UPGRADE MENU */
+        #upgrade-menu { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: rgba(10, 20, 30, 0.95); border: 2px solid var(--accent); border-radius: 15px; 
+            padding: 30px; display: none; z-index: 100; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        #upgrade-menu h2 { color: var(--accent); margin-top: 0; text-transform: uppercase; letter-spacing: 2px; }
+        #upgrade-options { display: flex; gap: 20px; justify-content: center; margin-top: 20px; }
+        
+        .upgrade-card { 
+            background: rgba(255,255,255,0.1); border: 2px solid #555; border-radius: 10px; padding: 15px; width: 150px; cursor: pointer; transition: all 0.2s;
+        }
+        .upgrade-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(255,255,255,0.2); }
+        .upgrade-card h3 { margin: 10px 0; color: white; font-size: 14px; }
+        .upgrade-card p { font-size: 12px; color: #ccc; margin: 0; }
+        
+        /* START SCREEN */
+        #start-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(180deg, rgba(10,30,50,0.9), rgba(5,15,25,1)); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 200;
+        }
+        #start-screen h1 { font-size: 60px; margin: 0; color: var(--accent); text-shadow: 0 0 20px rgba(232, 201, 125, 0.5); letter-spacing: 5px; font-family: 'Georgia', serif; }
+        #start-screen p { color: #aaa; margin-bottom: 40px; font-style: italic; }
+        .btn { 
+            background: var(--accent); color: #000; border: none; padding: 15px 40px; font-size: 18px; font-weight: bold; 
+            border-radius: 5px; cursor: pointer; text-transform: uppercase; transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        #game-over { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 150; }
+    </style>
+</head>
+<body>
+
+    <!-- START SCREEN -->
+    <div id="start-screen">
+        <h1>MAELSTROM</h1>
+        <p>Survive the Sea. Outlast the Storm.</p>
+        <button class="btn" id="start-btn">Set Sail</button>
+    </div>
+
+    <!-- GAME CONTAINER -->
+    <div id="game-container">
+        <!-- HUD -->
+        <div id="hud" style="display: none;">
+            <div class="hud-panel">
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                    <div id="health-text">100 / 100</div>
+                </div>
+                <div id="fleet-count" style="font-size: 12px; margin-top: 5px;">Fleet: 1 Ship</div>
+            </div>
+            
+            <div class="hud-panel" style="background: transparent; border: none; box-shadow: none;">
+                <div id="timer">00:00</div>
+            </div>
+
+            <div class="hud-panel" id="stats">
+                <div id="score">0 Doubloons</div>
+                <div id="level">Level 1</div>
+            </div>
+        </div>
+
+        <!-- UPGRADE MENU -->
+        <div id="upgrade-menu">
+            <h2>Level Up!</h2>
+            <p>Choose your upgrade</p>
+            <div id="upgrade-options"></div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="game-over" class="hud-panel">
+            <h2 style="color: #ff4e4e">The Sea Claims Another...</h2>
+            <p>Survival Time: <span id="final-time">00:00</span></p>
+            <p>Score: <span id="final-score">0</span></p>
+            <button class="btn" onclick="location.reload()">Try Again</button>
+        </div>
+    </div>
+
+    <!-- THREE.JS IMPORT MAP -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- GAME LOGIC -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { ObjectPool } from './js/ObjectPool.js'; // Assuming utility helper or inline logic
+
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            assetPath: './models/', // Adjust if your folder is named differently
+            models: {
+                player: 'ship-pirate-small.glb',
+                enemy: 'boat-row-small.glb',
+                projectile: 'cannon-ball.glb'
+            },
+            playerSpeed: 8.0,
+            turnSpeed: 2.0,
+            fireRate: 1.5, // Shots per second
+            enemySpawnRate: 1.0,
+            waveMultiplier: 1.05
+        };
+
+        // --- GLOBAL STATE ---
+        let scene, camera, renderer, clock, mixer;
+        let player, enemies = [], projectiles = [], collectibles = [];
+        let gameState = 'MENU'; // MENU, PLAY, UPGRADE, GAMEOVER
+        
+        // Player Stats
+        let stats = {
+            health: 100,
+            maxHealth: 100,
+            speed: CONFIG.playerSpeed,
+            damage: 10,
+            fireRate: CONFIG.fireRate,
+            score: 0,
+            level: 1,
+            xpToLevel: 100,
+            currentXp: 0,
+            fleetSize: 1,
+            time: 0
+        };
+
+        // Input
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // --- INITIALIZATION ---
+        function init() {
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a6fa8);
+            scene.fog = new THREE.FogExp2(0x1a6fa8, 0.015);
+
+            // 2. Camera (Isometric-ish)
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 25, 25);
+            camera.lookAt(0, 0, 0);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // 4. Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            sunLight.position.set(50, 100, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            // 5. Ocean
+            createOcean();
+
+            // 6. Clock
+            clock = new THREE.Clock();
+
+            // 7. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+            window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+            
+            document.getElementById('start-btn').addEventListener('click', startGame);
+
+            // Start Render Loop
+            animate();
+        }
+
+        function createOcean() {
+            const oceanGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
+            const oceanMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uDeepColor: { value: new THREE.Color(0x1a6fa8) },
+                    uShallowColor: { value: new THREE.Color(0x2196f3) }
+                },
+                vertexShader: `
+                    uniform float uTime;
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        vec3 pos = position;
+                        float wave1 = sin(pos.x * 0.05 + uTime) * 0.5;
+                        float wave2 = cos(pos.y * 0.05 + uTime * 0.8) * 0.5;
+                        pos.z += wave1 + wave2;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uDeepColor;
+                    uniform vec3 uShallowColor;
+                    varying vec2 vUv;
+                    void main() {
+                        gl_FragColor = vec4(mix(uDeepColor, uShallowColor, vUv.y), 1.0);
+                    }
+                `
+            });
+            const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+            ocean.rotation.x = -Math.PI / 2;
+            ocean.receiveShadow = true;
+            ocean.name = "ocean";
+            scene.add(ocean);
+        }
+
+        // --- GAME MANAGEMENT ---
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'flex';
+            gameState = 'PLAY';
+            
+            // Load Player
+            loadPlayer();
+            
+            // Reset Stats
+            stats = { health: 100, maxHealth: 100, speed: CONFIG.playerSpeed, damage: 10, fireRate: CONFIG.fireRate, score: 0, level: 1, xpToLevel: 100, currentXp: 0, fleetSize: 1, time: 0 };
+            updateUI();
+            
+            // Start Spawners
+            spawnWave();
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-time').innerText = formatTime(stats.time);
+            document.getElementById('final-score').innerText = stats.score;
+        }
+
+        // --- ASSET LOADING ---
+        const loader = new GLTFLoader();
+
+        function loadPlayer() {
+            loader.load(
+                `${CONFIG.assetPath}${CONFIG.models.player}`,
+                (gltf) => {
+                    player = gltf.scene;
+                    player.scale.set(1, 1, 1);
+                    player.position.set(0, 0.5, 0);
+                    player.castShadow = true;
+                    
+                    // Normalize rotation axis for ease
+                    player.rotation.order = 'YXZ'; 
+                    
+                    scene.add(player);
+                },
+                undefined,
+                (error) => {
+                    console.error("Error loading player model:", error);
+                    // Fallback to cube if model fails
+                    const geo = new THREE.BoxGeometry(2, 1, 3);
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+                    player = new THREE.Mesh(geo, mat);
+                    player.position.y = 0.5;
+                    scene.add(player);
+                }
+            );
+        }
+
+        function spawnEnemy() {
+            if (gameState !== 'PLAY') return;
+
+            loader.load(
+                `${CONFIG.assetPath}${CONFIG.models.enemy}`,
+                (gltf) => {
+                    const enemy = gltf.scene;
+                    enemy.scale.set(0.8, 0.8, 0.8); // Rowboats are small
+                    
+                    // Spawn at edge of camera view
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 35 + Math.random() * 10;
+                    enemy.position.set(Math.cos(angle) * radius, 0.3, Math.sin(angle) * radius);
+                    
+                    enemy.userData = {
+                        health: 20, // Rowboat HP
+                        type: 'rowboat',
+                        speed: 3.5
+                    };
+                    
+                    scene.add(enemy);
+                    enemies.push(enemy);
+                },
+                undefined,
+                (err) => {
+                    // Fallback
+                    const geo = new THREE.BoxGeometry(1, 0.5, 1.5);
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x654321 });
+                    const enemy = new THREE.Mesh(geo, mat);
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 35;
+                    enemy.position.set(Math.cos(angle) * radius, 0.3, Math.sin(angle) * radius);
+                    enemy.userData = { health: 20, type: 'rowboat', speed: 3.5 };
+                    scene.add(enemy);
+                    enemies.push(enemy);
+                }
+            );
+        }
+
+        // --- GAME LOOP ---
+        let spawnTimer = 0;
+        let fireTimer = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            
+            // Update Ocean Shader
+            if (scene.getObjectByName('ocean')) {
+                scene.getObjectByName('ocean').material.uniforms.uTime.value += delta;
+            }
+
+            if (gameState === 'PLAY') {
+                stats.time += delta;
+                updatePlayer(delta);
+                updateEnemies(delta);
+                updateProjectiles(delta);
+                updateCombat(delta);
+                updateUI();
+                
+                // Spawning Logic
+                spawnTimer += delta;
+                const spawnInterval = 2.0 / (1 + (stats.time / 60)); // Faster over time
+                if (spawnTimer > spawnInterval) {
+                    spawnEnemy();
+                    spawnTimer = 0;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updatePlayer(delta) {
+            if (!player) return;
+
+            // Movement
+            const moveVector = new THREE.Vector3();
+            if (keys.w) moveVector.z = -1;
+            if (keys.s) moveVector.z = 1;
+            if (keys.a) moveVector.x = -1;
+            if (keys.d) moveVector.x = 1;
+
+            if (moveVector.length() > 0) {
+                // Rotate player to face movement direction
+                const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+                let angleDiff = targetAngle - player.rotation.y;
+                
+                // Normalize angle
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                
+                player.rotation.y += angleDiff * 5 * delta;
+                
+                // Move
+                moveVector.normalize().multiplyScalar(stats.speed * delta);
+                player.position.add(moveVector);
+            }
+
+            // Camera Follow
+            const targetCamPos = new THREE.Vector3(
+                player.position.x,
+                25,
+                player.position.z + 25
+            );
+            camera.position.lerp(targetCamPos, 0.05);
+            camera.lookAt(player.position.x, 0, player.position.z);
+
+            // Bounds
+            player.position.x = THREE.MathUtils.clamp(player.position.x, -100, 100);
+            player.position.z = THREE.MathUtils.clamp(player.position.z, -100, 100);
+        }
+
+        function updateCombat(delta) {
+            if (!player) return;
+
+            // Auto Fire Logic
+            fireTimer += delta;
+            if (fireTimer >= 1.0 / stats.fireRate) {
+                fireTimer = 0;
+                
+                // Find nearest enemy
+                let nearestEnemy = null;
+                let nearestDist = 20; // Range
+                
+                for (let enemy of enemies) {
+                    const dist = player.position.distanceTo(enemy.position);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestEnemy = enemy;
+                    }
+                }
+
+                if (nearestEnemy) {
+                    fireProjectile(nearestEnemy.position);
+                }
+            }
+        }
+
+        function fireProjectile(targetPos) {
+            const geo = new THREE.SphereGeometry(0.2, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const ball = new THREE.Mesh(geo, mat);
+            
+            ball.position.copy(player.position);
+            ball.position.y = 1.0;
+            
+            // Direction
+            const dir = new THREE.Vector3().subVectors(targetPos, player.position).normalize();
+            
+            ball.userData = {
+                velocity: dir.multiplyScalar(40), // Speed
+                damage: stats.damage,
+                life: 2.0
+            };
+            
+            scene.add(ball);
+            projectiles.push(ball);
+        }
+
+        function updateProjectiles(delta) {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.position.add(p.userData.velocity.clone().multiplyScalar(delta));
+                
+                // Gravity drop
+                p.position.y -= delta * 5;
+                
+                // Collision Check
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    if (p.position.distanceTo(e.position) < 1.5) {
+                        // Hit
+                        e.userData.health -= p.userData.damage;
+                        
+                        // Remove Projectile
+                        scene.remove(p);
+                        projectiles.splice(i, 1);
+
+                        // Check Enemy Death
+                        if (e.userData.health <= 0) {
+                            destroyEnemy(e, j);
+                        }
+                        break;
+                    }
+                }
+
+                // Life Timeout
+                p.userData.life -= delta;
+                if (p.userData.life <= 0) {
+                    scene.remove(p);
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateEnemies(delta) {
+            if (!player) return;
+            
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                
+                // Chase Player
+                const dir = new THREE.Vector3().subVectors(player.position, e.position).normalize();
+                e.position.add(dir.multiplyScalar(e.userData.speed * delta));
+                
+                // Face Player
+                e.lookAt(player.position.x, e.position.y, player.position.z);
+
+                // Collision with Player
+                if (e.position.distanceTo(player.position) < 2.0) {
+                    stats.health -= 10;
+                    
+                    // Push back
+                    e.position.sub(dir.multiplyScalar(3));
+                    
+                    // Flash Red
+                    player.material?.emissive?.setHex(0xff0000);
+                    setTimeout(() => player.material?.emissive?.setHex(0x000000), 100);
+
+                    if (stats.health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+        }
+
+        function destroyEnemy(enemyObj, index) {
+            // Spawn Collectible (XP)
+            const coinGeo = new THREE.SphereGeometry(0.3, 8, 8);
+            const coinMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+            const coin = new THREE.Mesh(coinGeo, coinMat);
+            coin.position.copy(enemyObj.position);
+            coin.userData = { type: 'xp', value: 10 };
+            scene.add(coin);
+            collectibles.push(coin);
+
+            // Remove Enemy
+            scene.remove(enemyObj);
+            enemies.splice(index, 1);
+            
+            // Optional: Particle effect logic here
+        }
+
+        function updateUI() {
+            // Health
+            const hp = Math.max(0, stats.health);
+            document.getElementById('health-bar').style.width = `${(hp/stats.maxHealth)*100}%`;
+            document.getElementById('health-text').innerText = `${Math.ceil(hp)} / ${stats.maxHealth}`;
+
+            // Score & Time
+            document.getElementById('score').innerText = `${stats.score} Doubloons`;
+            document.getElementById('level').innerText = `Level ${stats.level}`;
+            document.getElementById('timer').innerText = formatTime(stats.time);
+        }
+
+        function formatTime(t) {
+            const m = Math.floor(t / 60);
+            const s = Math.floor(t % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // --- COLLISION & COLLECTIBLES ---
+        function checkCollectibles() {
+            if(!player) return;
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                const c = collectibles[i];
+                if (player.position.distanceTo(c.position) < 2.0) {
+                    // Collect
+                    if (c.userData.type === 'xp') {
+                        stats.score += c.userData.value;
+                        stats.currentXp += c.userData.value;
+                        
+                        // Check Level Up
+                        if (stats.currentXp >= stats.xpToLevel) {
+                            levelUp();
+                        }
+                    }
+                    scene.remove(c);
+                    collectibles.splice(i, 1);
+                }
+            }
+        }
+
+        // Integrate into animation loop
+        const originalAnimate = animate;
+        function animateWithCollectibles() {
+            if (gameState === 'PLAY') checkCollectibles();
+            // originalAnimate(); // Avoid recursion, logic merged in main animate
+        }
+        // Merging logic directly into main animate to avoid complex hooking in this snippet
+
+        // Modify animate loop to include collectibles
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            
+            // ... (previous animate code)
+            if (scene.getObjectByName('ocean')) {
+                scene.getObjectByName('ocean').material.uniforms.uTime.value += delta;
+            }
+
+            if (gameState === 'PLAY') {
+                stats.time += delta;
+                updatePlayer(delta);
+                updateEnemies(delta);
+                updateProjectiles(delta);
+                updateCombat(delta);
+                checkCollectibles(); // ADDED HERE
+                updateUI();
+                
+                spawnTimer += delta;
+                const spawnInterval = 2.0 / (1 + (stats.time / 60));
+                if (spawnTimer > spawnInterval) {
+                    spawnEnemy();
+                    spawnTimer = 0;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        // --- UPGRADE SYSTEM ---
+        function levelUp() {
+            gameState = 'UPGRADE';
+            stats.level++;
+            stats.currentXp = 0;
+            stats.xpToLevel = Math.floor(stats.xpToLevel * 1.5);
+
+            const menu = document.getElementById('upgrade-menu');
+            const optionsContainer = document.getElementById('upgrade-options');
+            optionsContainer.innerHTML = ''; // Clear previous
+
+            const upgrades = [
+                { name: "Reinforce Hull", desc: "+20 Max HP", effect: () => { stats.maxHealth += 20; stats.health = stats.maxHealth; }},
+                { name: "Swift Sails", desc: "+15% Speed", effect: () => { stats.speed *= 1.15; }},
+                { name: "Rapid Fire", desc: "+20% Fire Rate", effect: () => { stats.fireRate *= 1.2; }},
+                { name: "Heavy Shot", desc: "+5 Damage", effect: () => { stats.damage += 5; }}
+            ];
+
+            // Pick 3 random
+            const shuffled = upgrades.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+            shuffled.forEach(upg => {
+                const card = document.createElement('div');
+                card.className = 'upgrade-card';
+                card.innerHTML = `<h3>${upg.name}</h3><p>${upg.desc}</p>`;
+                card.onclick = () => {
+                    upg.effect();
+                    menu.style.display = 'none';
+                    gameState = 'PLAY';
+                    updateUI();
+                };
+                optionsContainer.appendChild(card);
+            });
+
+            menu.style.display = 'block';
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
