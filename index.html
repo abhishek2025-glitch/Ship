@@ -2,2238 +2,601 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>⚓ MAELSTROM - Survive the Sea</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAELSTROM | Survive the Sea</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        body { margin: 0; overflow: hidden; background: #0d4a3e; font-family: 'Roboto', sans-serif; touch-action: none; }
+        canvas { display: block; }
+        .pirate-font { font-family: 'Pirata+One', cursive; }
+        
+        #ui-layer { pointer-events: none; }
+        #ui-layer * { pointer-events: auto; }
+        
+        .card-gradient {
+            background: linear-gradient(135deg, rgba(26, 111, 168, 0.9) 0%, rgba(13, 74, 62, 0.9) 100%);
+            border: 2px solid #e8c97d;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            background: #0a1628;
-            color: #fff;
+        /* Virtual Joystick */
+        #joystick-container {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: none;
             touch-action: none;
         }
-
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Loading Screen */
-        #loadingScreen {
+        #joystick-knob {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .loader {
-            width: 80px;
-            height: 80px;
-            border: 6px solid #1a3a5c;
-            border-top: 6px solid #ffd700;
+            width: 50px;
+            height: 50px;
+            background: rgba(232, 201, 125, 0.5);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            left: 35px;
+            top: 35px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @media (pointer: coarse) {
+            #joystick-container { display: block; }
         }
 
-        #loadingText {
-            font-size: 1.2rem;
-            color: #4a90e2;
-            margin-top: 10px;
-        }
-
-        /* Main Menu */
-        #mainMenu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(26, 111, 168, 0.97), rgba(10, 22, 40, 0.99));
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        #mainMenu h1 {
-            font-size: clamp(3rem, 8vw, 5rem);
-            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
-            margin-bottom: 0.5rem;
-            background: linear-gradient(45deg, #ffd700, #ff8c00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: titleGlow 2s ease-in-out infinite alternate;
-        }
-
-        @keyframes titleGlow {
-            from { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5)); }
-            to { filter: drop-shadow(0 0 40px rgba(255, 215, 0, 0.8)); }
-        }
-
-        #mainMenu .subtitle {
-            font-size: clamp(1.2rem, 3vw, 1.8rem);
-            color: #e8c97d;
-            margin-bottom: 2rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
-        }
-
-        .menu-btn {
-            padding: clamp(0.8rem, 2vw, 1rem) clamp(2rem, 5vw, 3rem);
-            font-size: clamp(1rem, 2.5vw, 1.3rem);
-            margin: 0.6rem;
-            border: 3px solid #ffd700;
-            background: rgba(255, 215, 0, 0.15);
-            color: #ffd700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            min-width: clamp(250px, 60vw, 320px);
-            font-weight: bold;
-        }
-
-        .menu-btn:hover {
-            background: rgba(255, 215, 0, 0.35);
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
-        }
-
-        .menu-btn.primary {
-            background: linear-gradient(45deg, #ffd700, #ff8c00);
-            color: #000;
-            font-size: clamp(1.1rem, 3vw, 1.6rem);
-            padding: clamp(1rem, 2.5vw, 1.2rem) clamp(3rem, 7vw, 4rem);
-        }
-
-        /* HUD */
-        #hud {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: clamp(10px, 2vw, 20px);
-            display: none;
-            z-index: 100;
-            pointer-events: none;
-        }
-
-        .hud-top-left {
-            position: absolute;
-            top: clamp(10px, 2vw, 20px);
-            left: clamp(10px, 2vw, 20px);
-        }
-
-        .hud-top-center {
-            position: absolute;
-            top: clamp(10px, 2vw, 20px);
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-        }
-
-        .hud-top-right {
-            position: absolute;
-            top: clamp(10px, 2vw, 20px);
-            right: clamp(10px, 2vw, 20px);
-            text-align: right;
-        }
-
-        .hud-bottom-right {
-            position: absolute;
-            bottom: clamp(15px, 3vw, 25px);
-            right: clamp(15px, 3vw, 25px);
-        }
-
-        .hp-bar-container {
-            width: clamp(200px, 40vw, 300px);
-            height: clamp(18px, 3vw, 25px);
-            background: rgba(0, 0, 0, 0.75);
-            border: 2px solid #ffd700;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 6px;
-        }
-
-        .hp-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #ff4444, #ff6666);
-            transition: width 0.3s ease;
-            border-radius: 12px;
-        }
-
-        .hp-text {
-            font-size: clamp(11px, 2vw, 14px);
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
-        }
-
-        .timer {
-            font-size: clamp(2rem, 6vw, 3rem);
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.9);
-        }
-
-        .timer.warning {
-            color: #ff4444;
-            animation: pulse 0.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .stat-box {
-            background: rgba(0, 0, 0, 0.75);
-            padding: clamp(8px, 1.5vw, 10px) clamp(12px, 2.5vw, 18px);
-            border-radius: 8px;
-            border: 2px solid #4a90e2;
-            margin-bottom: 6px;
-            backdrop-filter: blur(5px);
-        }
-
-        .stat-label {
-            font-size: clamp(10px, 1.8vw, 12px);
-            color: #aaa;
-            text-transform: uppercase;
-        }
-
-        .stat-value {
-            font-size: clamp(18px, 4vw, 24px);
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        .fleet-icons {
-            display: flex;
-            gap: 6px;
-            font-size: clamp(20px, 4vw, 28px);
-            justify-content: flex-end;
-        }
-
-        /* Level Up Screen */
-        #levelUpScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.88);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 500;
-            backdrop-filter: blur(8px);
-        }
-
-        #levelUpScreen h2 {
-            font-size: clamp(2rem, 5vw, 3rem);
-            color: #ffd700;
-            margin-bottom: 1.5rem;
-            text-shadow: 3px 3px 6px #000;
-        }
-
-        .upgrade-cards {
-            display: flex;
-            gap: clamp(15px, 3vw, 30px);
-            perspective: 1000px;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 95vw;
-        }
-
-        .upgrade-card {
-            width: clamp(220px, 55vw, 280px);
-            height: clamp(340px, 70vw, 400px);
-            background: linear-gradient(145deg, #1a3a5c, #0d2137);
-            border: 3px solid #4a90e2;
-            border-radius: 16px;
-            padding: clamp(15px, 3vw, 25px);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transform-style: preserve-3d;
-        }
-
-        .upgrade-card:hover {
-            transform: translateY(-12px) scale(1.03);
-            box-shadow: 0 20px 50px rgba(74, 144, 226, 0.5);
-            border-color: #ffd700;
-        }
-
-        .upgrade-card.common { border-color: #888; }
-        .upgrade-card.rare { border-color: #4a90e2; box-shadow: 0 0 20px rgba(74, 144, 226, 0.3); }
-        .upgrade-card.epic { border-color: #9932cc; box-shadow: 0 0 20px rgba(153, 50, 204, 0.3); }
-        .upgrade-card.legendary { 
-            border-color: #ffd700; 
-            animation: legendaryGlow 1.5s ease-in-out infinite alternate;
-        }
-
-        @keyframes legendaryGlow {
-            from { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
-            to { box-shadow: 0 0 50px rgba(255, 215, 0, 0.9); }
-        }
-
-        .card-icon {
-            font-size: clamp(50px, 12vw, 80px);
-            margin-bottom: 15px;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
-        }
-
-        .card-name {
-            font-size: clamp(1.1rem, 2.8vw, 1.4rem);
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .card-desc {
-            font-size: clamp(0.85rem, 2vw, 1rem);
-            color: #ccc;
-            text-align: center;
-            line-height: 1.4;
-            flex-grow: 1;
-        }
-
-        .card-rarity {
-            margin-top: auto;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: clamp(0.75rem, 1.8vw, 0.85rem);
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .common .card-rarity { background: #555; color: #fff; }
-        .rare .card-rarity { background: #4a90e2; color: #fff; }
-        .epic .card-rarity { background: #9932cc; color: #fff; }
-        .legendary .card-rarity { background: linear-gradient(45deg, #ffd700, #ff8c00); color: #000; }
-
-        /* Death Screen */
-        #deathScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(139, 0, 0, 0.94), rgba(10, 22, 40, 0.98));
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 600;
-        }
-
-        #deathScreen h2 {
-            font-size: clamp(2.2rem, 6vw, 3.5rem);
-            color: #ff4444;
-            margin-bottom: 1.5rem;
-            text-shadow: 3px 3px 6px #000;
-        }
-
-        .death-stat {
-            font-size: clamp(1.3rem, 3.5vw, 1.8rem);
-            margin: 10px 0;
-            color: #e8c97d;
-        }
-
-        .death-stat span {
-            color: #ffd700;
-            font-weight: bold;
-            font-size: clamp(1.6rem, 4vw, 2.2rem);
-        }
-
-        /* Mobile Controls */
-        #mobileControls {
-            position: absolute;
-            bottom: 25px;
-            left: 25px;
-            display: none;
-            z-index: 200;
-        }
-
-        .joystick-base {
-            width: clamp(100px, 20vw, 120px);
-            height: clamp(100px, 20vw, 120px);
-            background: rgba(255, 255, 255, 0.12);
-            border: 3px solid rgba(255, 255, 255, 0.35);
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .joystick-stick {
-            width: clamp(42px, 9vw, 50px);
-            height: clamp(42px, 9vw, 50px);
-            background: rgba(255, 215, 0, 0.65);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            touch-action: none;
-        }
-
-        /* Boss Warning */
-        #bossWarning {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(2.5rem, 7vw, 4rem);
-            color: #4dff9b;
-            text-shadow: 0 0 30px #4dff9b, 0 0 60px #4dff9b;
-            display: none;
-            z-index: 400;
-            animation: bossWarningPulse 0.5s ease-in-out infinite;
-            white-space: nowrap;
-        }
-
-        @keyframes bossWarningPulse {
-            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.08); }
-        }
-
-        /* Damage Flash */
-        #damageFlash {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, transparent 30%, rgba(255, 0, 0, 0.4) 100%);
-            pointer-events: none;
-            opacity: 0;
-            z-index: 150;
-            transition: opacity 0.1s;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            #mobileControls { display: block; }
-            .menu-btn { min-width: 260px; }
-        }
-
-        @media (hover: none) and (pointer: coarse) {
-            #mobileControls { display: block; }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
 
-        <!-- Loading Screen -->
-        <div id="loadingScreen">
-            <div class="loader"></div>
-            <h2 style="color: #ffd700; margin-bottom: 10px;">⚓ MAELSTROM ⚓</h2>
-            <p id="loadingText">Loading assets...</p>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 text-white">
+        <h1 class="pirate-font text-6xl mb-4 text-yellow-500">MAELSTROM</h1>
+        <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div id="loading-bar" class="h-full bg-yellow-500 w-0 transition-all duration-300"></div>
         </div>
+        <p id="loading-text" class="mt-4 text-gray-400">Preparing the fleet...</p>
+    </div>
 
-        <!-- Main Menu -->
-        <div id="mainMenu">
-            <h1>⚓ MAELSTROM ⚓</h1>
-            <p class="subtitle">Survive the Sea. Outlast the Storm.</p>
-            <button class="menu-btn primary" onclick="startGame('classic')">⚔️ Set Sail</button>
-            <button class="menu-btn" onclick="showLeaderboard()">🏆 Leaderboard</button>
-            <button class="menu-btn" onclick="showUpgrades()">💀 Skull Upgrades</button>
-        </div>
-
-        <!-- HUD -->
-        <div id="hud">
-            <div class="hud-top-left">
-                <div class="hp-bar-container">
-                    <div class="hp-bar" id="hpBar"></div>
+    <!-- HUD -->
+    <div id="ui-layer" class="fixed inset-0 z-10 hidden">
+        <!-- Top Bar -->
+        <div class="flex justify-between p-4">
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-yellow-500 font-bold">HP</span>
+                    <div class="w-48 h-4 bg-gray-800 rounded-full border border-gray-600">
+                        <div id="hp-bar" class="h-full bg-red-600 rounded-full transition-all" style="width: 100%"></div>
+                    </div>
                 </div>
-                <div class="hp-text">HP: <span id="hpText">100</span>/<span id="maxHpText">100</span></div>
-            </div>
-
-            <div class="hud-top-center">
-                <div class="timer" id="timer">00:00</div>
-            </div>
-
-            <div class="hud-top-right">
-                <div class="stat-box">
-                    <div class="stat-label">Doubloons</div>
-                    <div class="stat-value" id="doubloons">0 💰</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Level</div>
-                    <div class="stat-value" id="level">1</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Next Level</div>
-                    <div style="width: clamp(120px, 25vw, 150px); height: 8px; background: #333; border-radius: 4px; margin-top: 5px;">
-                        <div id="xpBar" style="height: 100%; background: linear-gradient(90deg, #4a90e2, #66a3e7); border-radius: 4px; width: 0%; transition: width 0.3s;"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-blue-400 font-bold">XP</span>
+                    <div class="w-48 h-2 bg-gray-800 rounded-full border border-gray-600">
+                        <div id="xp-bar" class="h-full bg-blue-500 rounded-full transition-all" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
-
-            <div class="hud-bottom-right">
-                <div class="stat-label" style="text-align: right;">Fleet</div>
-                <div class="fleet-icons" id="fleetIcons">⛵</div>
+            <div class="text-center">
+                <div id="game-timer" class="pirate-font text-4xl text-white">00:00</div>
+                <div class="text-yellow-500 text-sm">SURVIVE</div>
+            </div>
+            <div class="text-right">
+                <div id="doubloon-count" class="pirate-font text-3xl text-yellow-400">0</div>
+                <div class="text-gray-400 text-xs">DOUBLOONS</div>
             </div>
         </div>
 
-        <!-- Level Up Screen -->
-        <div id="levelUpScreen">
-            <h2>⚡ LEVEL UP! ⚡</h2>
-            <p style="margin-bottom: 1.5rem; color: #aaa; font-size: clamp(1rem, 2.5vw, 1.2rem);">Choose your upgrade</p>
-            <div class="upgrade-cards" id="upgradeCards"></div>
+        <!-- Level Up Overlay -->
+        <div id="level-up-screen" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden">
+            <div class="text-center">
+                <h2 class="pirate-font text-5xl text-yellow-500 mb-8">CHOOSE AN UPGRADE</h2>
+                <div id="upgrade-cards" class="flex flex-wrap justify-center gap-6 p-4">
+                    <!-- Cards injected here -->
+                </div>
+            </div>
         </div>
 
         <!-- Death Screen -->
-        <div id="deathScreen">
-            <h2>☠️ The Sea Claims Another... ☠️</h2>
-            <div class="death-stat">Survival Time: <span id="finalTime">00:00</span></div>
-            <div class="death-stat">Score: <span id="finalScore">0</span></div>
-            <div class="death-stat">Skulls Earned: <span id="skullsEarned">0</span> 💀</div>
-            <div class="death-stat">Fleet Size: <span id="finalFleet">1</span></div>
-            <button class="menu-btn primary" onclick="restartGame()" style="margin-top: 1.5rem;">🔄 Try Again</button>
-            <button class="menu-btn" onclick="returnToMenu()">🏠 Main Menu</button>
-        </div>
-
-        <!-- Boss Warning -->
-        <div id="bossWarning">👻 GHOST SHIP APPROACHING 👻</div>
-
-        <!-- Damage Flash Effect -->
-        <div id="damageFlash"></div>
-
-        <!-- Mobile Controls -->
-        <div id="mobileControls">
-            <div class="joystick-base" id="joystickBase">
-                <div class="joystick-stick" id="joystickStick"></div>
+        <div id="death-screen" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center hidden">
+            <h1 class="pirate-font text-7xl text-red-600 mb-2">WRECKED</h1>
+            <p class="text-gray-400 mb-8 italic">"The sea claims another legend..."</p>
+            <div class="bg-slate-800 p-6 rounded-lg border border-yellow-900 w-80 text-center mb-8">
+                <div class="text-2xl text-white mb-2">Time: <span id="final-time" class="text-yellow-500">00:00</span></div>
+                <div class="text-2xl text-white">Score: <span id="final-score" class="text-yellow-500">0</span></div>
             </div>
+            <button onclick="location.reload()" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 px-8 rounded-full pirate-font text-2xl transition-transform active:scale-95">
+                SAIL AGAIN
+            </button>
         </div>
     </div>
 
-    <!-- Three.js from CDN with GLTFLoader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <!-- Main Menu -->
+    <div id="main-menu" class="fixed inset-0 z-20 flex flex-col items-center justify-center bg-transparent">
+        <h1 class="pirate-font text-9xl text-yellow-500 drop-shadow-2xl mb-2">MAELSTROM</h1>
+        <p class="text-white text-xl tracking-widest mb-12 opacity-80">SURVIVE THE SEA. OUTLAST THE STORM.</p>
+        <button id="start-btn" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 px-12 rounded-full pirate-font text-4xl transition-all hover:scale-110 active:scale-95 shadow-2xl">
+            COMMENCE VOYAGE
+        </button>
+        <div class="mt-12 flex gap-8">
+            <div class="text-center text-white/50"><span class="block text-white font-bold">WASD</span> to steer</div>
+            <div class="text-center text-white/50"><span class="block text-white font-bold">AUTO</span> cannons</div>
+            <div class="text-center text-white/50"><span class="block text-white font-bold">LEVEL UP</span> to grow</div>
+        </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="joystick-container">
+        <div id="joystick-knob"></div>
+    </div>
+
     <script>
-        // ============================================
-        // MAELSTROM - Complete Naval Survivor Game
-        // Using Kenney Pirate Kit Assets (CC0)
-        // ============================================
+        /**
+         * MAELSTROM - Game Engine
+         * Built for Three.js
+         */
 
-        // Global Constants
-        const ASSETS_PATH = 'Models/';
-        const MODEL_EXTENSION = '.glb';
-
-        // Game State Machine
-        const GameState = {
-            LOADING: 'loading',
-            MENU: 'menu',
-            PLAYING: 'playing',
-            PAUSED: 'paused',
-            LEVEL_UP: 'levelup',
-            DEAD: 'dead'
+        const CONFIG = {
+            oceanColor: 0x1a6fa8,
+            fogColor: 0x0d4a3e,
+            playerSpeed: 0.15,
+            playerTurnSpeed: 0.04,
+            drag: 0.98,
+            spawnDistance: 60,
+            weaponRange: 25,
+            fireRate: 1500,
+            assetPath: './Models/'
         };
 
-        let currentState = GameState.LOADING;
-
-        // Core Three.js Objects
-        let scene = null;
-        let camera = null;
-        let renderer = null;
-        let clock = null;
-        let oceanMesh = null;
-        let gltfLoader = null;
-
-        // Game Entities
-        let playerShip = null;
-        let playerFleet = [];
-        let enemies = [];
-        let cannonballs = [];
-        let doubloons = [];
-        let particles = [];
-        let islands = [];
-
-        // Player Stats Object
-        const player = {
+        const state = {
+            running: false,
+            paused: false,
+            time: 0,
+            score: 0,
+            doubloons: 0,
+            level: 1,
+            xp: 0,
+            xpToNext: 100,
             hp: 100,
             maxHp: 100,
-            speed: 0.18,
-            damage: 15,
-            fireRate: 800,
-            lastFire: 0,
-            doubloons: 0,
-            xp: 0,
-            xpToLevel: 100,
-            level: 1,
             fleetSize: 1,
-            skulls: 0,
-            survivalTime: 0,
-            upgrades: [],
-            invincibleTime: 0
+            damageMultiplier: 1,
+            assets: {},
+            keys: {},
+            joystick: { active: false, x: 0, y: 0 }
         };
 
-        // Input State
-        const keys = {};
-        const joystickInput = { x: 0, y: 0 };
+        // --- Core Setup ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(CONFIG.fogColor, 0.015);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 40, 40);
+        camera.lookAt(0, 0, 0);
 
-        // Wave/Boss System
-        let waveIntensity = 1;
-        let gameTime = 0;
-        let bossActive = false;
-        let bossSpawnTimer = 0;
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-        // Asset Cache
-        const modelCache = new Map();
-        let assetsLoaded = 0;
-        const TOTAL_ASSETS_TO_LOAD = 8; // Critical assets only
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-        // ============================================
-        // INITIALIZATION
-        // ============================================
+        const sun = new THREE.DirectionalLight(0xffeec2, 1.2);
+        sun.position.set(50, 100, 50);
+        sun.castShadow = true;
+        sun.shadow.camera.left = -100;
+        sun.shadow.camera.right = 100;
+        sun.shadow.camera.top = 100;
+        sun.shadow.camera.bottom = -100;
+        scene.add(sun);
 
-        function init() {
-            console.log('🎮 MAELSTROM Initializing...');
-            
-            try {
-                // Initialize clock first
-                clock = new THREE.Clock();
+        // --- Asset Management ---
+        const loader = new THREE.GLTFLoader();
+        const modelsToLoad = [
+            'ship-pirate-small.glb',
+            'ship-small.glb',
+            'ship-medium.glb',
+            'ship-large.glb',
+            'ship-ghost.glb',
+            'boat-row-small.glb',
+            'cannon-ball.glb',
+            'chest.glb',
+            'rocks-a.glb'
+        ];
 
-                // Setup Scene
-                setupScene();
-                
-                // Setup Camera
-                setupCamera();
-                
-                // Setup Renderer
-                setupRenderer();
-                
-                // Setup Lighting
-                setupLighting();
-                
-                // Create Ocean
-                createOcean();
-                
-                // Setup Event Listeners
-                setupEventListeners();
-                
-                // Load Critical Assets
-                loadCriticalAssets();
-                
-                // Start Render Loop
-                animate();
+        async function loadAssets() {
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingText = document.getElementById('loading-text');
+            let loaded = 0;
 
-                console.log('✅ Initialization Complete');
-            } catch (error) {
-                console.error('❌ Initialization Error:', error);
-                showErrorMessage('Failed to initialize game: ' + error.message);
-            }
-        }
-
-        function setupScene() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a6fa8);
-            scene.fog = new THREE.FogExp2(0x1a6fa8, 0.0015);
-        }
-
-        function setupCamera() {
-            camera = new THREE.PerspectiveCamera(
-                60, 
-                window.innerWidth / window.innerHeight, 
-                0.1, 
-                2000
-            );
-            camera.position.set(0, 45, 35);
-            camera.lookAt(0, 0, 0);
-        }
-
-        function setupRenderer() {
-            const canvas = document.getElementById('gameCanvas');
-            if (!canvas) {
-                throw new Error('Canvas element not found');
-            }
-
-            renderer = new THREE.WebGLRenderer({ 
-                canvas: canvas,
-                antialias: true,
-                alpha: false
-            });
-            
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputEncoding = THREE.sRGBEncoding;
-        }
-
-        function setupLighting() {
-            // Ambient Light
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            // Directional Light (Sun)
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            directionalLight.position.set(50, 100, 50);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            directionalLight.shadow.camera.near = 0.5;
-            directionalLight.shadow.camera.far = 500;
-            directionalLight.shadow.camera.left = -100;
-            directionalLight.shadow.camera.right = 100;
-            directionalLight.shadow.camera.top = 100;
-            directionalLight.shadow.camera.bottom = -100;
-            scene.add(directionalLight);
-
-            // Hemisphere Light for natural sky lighting
-            const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x1a6fa8, 0.4);
-            scene.add(hemiLight);
-        }
-
-        function createOcean() {
-            const oceanGeometry = new THREE.PlaneGeometry(2000, 2000, 128, 128);
-            
-            const oceanMaterial = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 0 },
-                    waterColor: { value: new THREE.Color(0x1a6fa8) },
-                    deepColor: { value: new THREE.Color(0x0d4a3e) },
-                    foamColor: { value: new THREE.Color(0xffffff) }
-                },
-                vertexShader: `
-                    uniform float time;
-                    varying vec2 vUv;
-                    varying float vElevation;
-                    
-                    // Simplex noise for realistic waves
-                    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-                    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-                    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-                    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-                    
-                    float snoise(vec3 v) {
-                        const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-                        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-                        
-                        vec3 i = floor(v + dot(v, C.yyy));
-                        vec3 x0 = v - i + dot(i, C.xxx);
-                        
-                        vec3 g = step(x0.yzx, x0.xyz);
-                        vec3 l = 1.0 - g;
-                        vec3 i1 = min(g.xyz, l.zxy);
-                        vec3 i2 = max(g.xyz, l.zxy);
-                        
-                        vec3 x1 = x0 - i1 + C.xxx;
-                        vec3 x2 = x0 - i2 + C.yyy;
-                        vec3 x3 = x0 - D.yyy;
-                        
-                        i = mod289(i);
-                        vec4 p = permute(permute(permute(
-                            i.z + vec4(0.0, i1.z, i2.z, 1.0))
-                            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-                            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+            const promises = modelsToLoad.map(file => {
+                return new Promise((resolve) => {
+                    loader.load(CONFIG.assetPath + file, 
+                        (gltf) => {
+                            state.assets[file] = gltf.scene;
+                            loaded++;
+                            const progress = (loaded / modelsToLoad.length) * 100;
+                            loadingBar.style.width = progress + '%';
+                            loadingText.innerText = `Hauling ${file}...`;
                             
-                        float n_ = 0.142857142857;
-                        vec3 ns = n_ * D.wyz - D.xzx;
-                        
-                        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-                        vec4 x_ = floor(j * ns.z);
-                        vec4 y_ = floor(j - 7.0 * x_);
-                        
-                        vec4 x = x_ *ns.x + ns.yyyy;
-                        vec4 y = y_ *ns.x + ns.yyyy;
-                        vec4 h = 1.0 - abs(x) - abs(y);
-                        
-                        vec4 b0 = vec4(x.xy, y.xy);
-                        vec4 b1 = vec4(x.zw, y.zw);
-                        vec4 s0 = floor(b0)*2.0 + 1.0;
-                        vec4 s1 = floor(b1)*2.0 + 1.0;
-                        vec4 sh = -step(h, vec4(0.0));
-                        
-                        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-                        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-                        
-                        vec3 p0 = vec3(a0.xy, h.x);
-                        vec3 p1 = vec3(a0.zw, h.y);
-                        vec3 p2 = vec3(a1.xy, h.z);
-                        vec3 p3 = vec3(a1.zw, h.w);
-                        
-                        vec4 norm = taylorInvSqrt(vec4(
-                            dot(p0,p0), dot(p1,p1), 
-                            dot(p2,p2), dot(p3,p3)));
-                        p0 *= norm.x;
-                        p1 *= norm.y;
-                        p2 *= norm.z;
-                        p3 *= norm.w;
-                        
-                        vec4 m = max(0.6 - vec4(
-                            dot(x0,x0), dot(x1,x1), 
-                            dot(x2,x2), dot(x3,x3)), 0.0);
-                        m = m * m;
-                        
-                        return 42.0 * dot(m*m, vec4(
-                            dot(p0,x0), dot(p1,x1), 
-                            dot(p2,x2), dot(p3,x3)));
-                    }
-                    
-                    void main() {
-                        vUv = uv;
-                        vec3 pos = position;
-                        
-                        // Multi-layer wave system
-                        float wave1 = snoise(vec3(pos.x * 0.015, pos.y * 0.015, time * 0.25)) * 2.5;
-                        float wave2 = snoise(vec3(pos.x * 0.04, pos.y * 0.04, time * 0.4)) * 1.2;
-                        float wave3 = snoise(vec3(pos.x * 0.08, pos.y * 0.08, time * 0.6)) * 0.6;
-                        float wave4 = snoise(vec3(pos.x * 0.15, pos.y * 0.15, time * 0.9)) * 0.3;
-                        
-                        pos.z = wave1 + wave2 + wave3 + wave4;
-                        vElevation = pos.z;
-                        
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform vec3 waterColor;
-                    uniform vec3 deepColor;
-                    uniform vec3 foamColor;
-                    varying vec2 vUv;
-                    varying float vElevation;
-                    
-                    void main() {
-                        float mixStrength = (vElevation + 3.0) / 6.0;
-                        mixStrength = clamp(mixStrength, 0.0, 1.0);
-                        
-                        vec3 color = mix(deepColor, waterColor, mixStrength);
-                        
-                        // Foam on wave crests
-                        if(vElevation > 2.0) {
-                            float foamAmount = smoothstep(2.0, 3.5, vElevation);
-                            color = mix(color, foamColor, foamAmount * 0.6);
-                        }
-                        
-                        // Depth variation
-                        float depth = length(vUv - 0.5) * 0.3;
-                        color = mix(color, deepColor, depth);
-                        
-                        gl_FragColor = vec4(color, 1.0);
-                    }
-                `
-            });
-
-            oceanMesh = new THREE.Mesh(oceanGeometry, oceanMaterial);
-            oceanMesh.rotation.x = -Math.PI / 2;
-            oceanMesh.receiveShadow = true;
-            scene.add(oceanMesh);
-        }
-
-        // ============================================
-        // ASSET LOADING SYSTEM
-        // ============================================
-
-        function initGLTFLoader() {
-            if (!gltfLoader && typeof THREE !== 'undefined' && THREE.GLTFLoader) {
-                gltfLoader = new THREE.GLTFLoader();
-            } else if (!gltfLoader) {
-                console.warn('GLTFLoader not available, using fallback geometry');
-            }
-        }
-
-        async function loadCriticalAssets() {
-            updateLoadingText('Loading ship models...');
-            
-            const criticalModels = [
-                'ship-pirate-small',  // Player ship
-                'boat-row-small',     // Fleet/Enemy
-                'ship-small',         // Enemy
-                'ship-medium',        // Enemy
-                'ship-large',         // Enemy/Boss
-                'ship-ghost',         // Boss
-                'cannon-ball',        // Projectile
-                'chest'               // Loot
-            ];
-
-            try {
-                if (gltfLoader) {
-                    // Try loading GLB models
-                    for (const modelName of criticalModels) {
-                        await loadModel(modelName);
-                    }
-                } else {
-                    // Fallback: Create procedural models
-                    console.log('Using procedural fallback models');
-                    updateLoadingText('Creating game objects...');
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-                
-                assetsLoaded = TOTAL_ASSETS_TO_LOAD;
-                onAllAssetsLoaded();
-            } catch (error) {
-                console.error('Asset loading error:', error);
-                console.log('Falling back to procedural models...');
-                onAllAssetsLoaded(); // Continue with fallback models
-            }
-        }
-
-        async function loadModel(modelName) {
-            const cacheKey = modelName;
-            
-            if (modelCache.has(cacheKey)) {
-                return modelCache.get(cacheKey);
-            }
-
-            const modelPath = `${ASSETS_PATH}${modelName}${MODEL_EXTENSION}`;
-            
-            try {
-                const gltf = await new Promise((resolve, reject) => {
-                    gltfLoader.load(
-                        modelPath,
-                        (gltf) => resolve(gltf),
+                            // Setup shadows for all children
+                            gltf.scene.traverse(child => {
+                                if (child.isMesh) {
+                                    child.castShadow = true;
+                                    child.receiveShadow = true;
+                                }
+                            });
+                            resolve();
+                        },
                         undefined,
-                        (error) => reject(error)
+                        () => {
+                            console.warn(`Failed to load ${file}, using fallback`);
+                            // Fallback cube
+                            const fallback = new THREE.Group();
+                            const mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color: 0xff00ff}));
+                            fallback.add(mesh);
+                            state.assets[file] = fallback;
+                            loaded++;
+                            resolve();
+                        }
                     );
                 });
+            });
 
-                const model = gltf.scene;
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+            await Promise.all(promises);
+            document.getElementById('loading-screen').classList.add('opacity-0');
+            setTimeout(() => document.getElementById('loading-screen').remove(), 500);
+        }
+
+        // --- Entities ---
+        class Projectile {
+            constructor(pos, dir, isPlayer = true) {
+                this.mesh = state.assets['cannon-ball.glb'].clone();
+                this.mesh.position.copy(pos);
+                this.mesh.scale.set(0.5, 0.5, 0.5);
+                this.velocity = dir.multiplyScalar(0.8);
+                this.isPlayer = isPlayer;
+                this.life = 100;
+                scene.add(this.mesh);
+            }
+            update() {
+                this.mesh.position.add(this.velocity);
+                this.life--;
+                if (this.life <= 0) this.destroy();
+            }
+            destroy() {
+                scene.remove(this.mesh);
+                projectiles = projectiles.filter(p => p !== this);
+            }
+        }
+
+        class Enemy {
+            constructor(type = 'ship-small.glb') {
+                this.mesh = state.assets[type].clone();
+                const angle = Math.random() * Math.PI * 2;
+                this.mesh.position.set(
+                    player.mesh.position.x + Math.cos(angle) * CONFIG.spawnDistance,
+                    0,
+                    player.mesh.position.z + Math.sin(angle) * CONFIG.spawnDistance
+                );
+                this.hp = type === 'ship-medium.glb' ? 60 : 30;
+                this.speed = 0.08 + Math.random() * 0.04;
+                scene.add(this.mesh);
+            }
+            update() {
+                const dir = new THREE.Vector3().subVectors(player.mesh.position, this.mesh.position).normalize();
+                this.mesh.lookAt(player.mesh.position);
+                this.mesh.position.add(dir.multiplyScalar(this.speed));
+
+                // Simple collision with player
+                if (this.mesh.position.distanceTo(player.mesh.position) < 3) {
+                    takeDamage(10);
+                    this.die(false);
+                }
+            }
+            die(dropLoot = true) {
+                if (dropLoot) spawnDoubloon(this.mesh.position);
+                scene.remove(this.mesh);
+                enemies = enemies.filter(e => e !== this);
+                state.score += 100;
+            }
+        }
+
+        class Doubloon {
+            constructor(pos) {
+                this.mesh = state.assets['chest.glb'].clone();
+                this.mesh.position.copy(pos);
+                this.mesh.scale.set(0.5, 0.5, 0.5);
+                scene.add(this.mesh);
+            }
+            update() {
+                this.mesh.rotation.y += 0.02;
+                if (this.mesh.position.distanceTo(player.mesh.position) < 4) {
+                    collectXP(20);
+                    state.doubloons += 10;
+                    document.getElementById('doubloon-count').innerText = state.doubloons;
+                    scene.remove(this.mesh);
+                    pickups = pickups.filter(p => p !== this);
+                }
+            }
+        }
+
+        // --- World Objects ---
+        const oceanGeom = new THREE.PlaneGeometry(1000, 1000, 100, 100);
+        oceanGeom.rotateX(-Math.PI / 2);
+        const oceanMat = new THREE.MeshStandardMaterial({
+            color: CONFIG.oceanColor,
+            roughness: 0.1,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.9
+        });
+        const ocean = new THREE.Mesh(oceanGeom, oceanMat);
+        scene.add(ocean);
+
+        const player = {
+            mesh: null,
+            velocity: new THREE.Vector3(),
+            rotationVel: 0,
+            fireTimer: 0,
+            init() {
+                this.mesh = state.assets['ship-pirate-small.glb'].clone();
+                scene.add(this.mesh);
+            },
+            update() {
+                // Movement
+                let forward = 0;
+                if (state.keys['KeyW'] || state.keys['ArrowUp'] || state.joystick.y < -0.2) forward = 1;
+                
+                let turn = 0;
+                if (state.keys['KeyA'] || state.keys['ArrowLeft'] || state.joystick.x < -0.2) turn = 1;
+                if (state.keys['KeyD'] || state.keys['ArrowRight'] || state.joystick.x > 0.2) turn = -1;
+
+                this.rotationVel += turn * CONFIG.playerTurnSpeed;
+                this.mesh.rotation.y += this.rotationVel;
+                this.rotationVel *= 0.8;
+
+                const moveDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+                if (forward) {
+                    this.velocity.add(moveDir.multiplyScalar(CONFIG.playerSpeed));
+                }
+                this.mesh.position.add(this.velocity);
+                this.velocity.multiplyScalar(CONFIG.drag);
+
+                // Auto combat
+                this.fireTimer += 16.6; // approx 60fps
+                if (this.fireTimer > CONFIG.fireRate) {
+                    this.autoFire();
+                    this.fireTimer = 0;
+                }
+                
+                // Rock/Wobble effect
+                this.mesh.rotation.z = Math.sin(Date.now() * 0.002) * 0.05;
+                this.mesh.rotation.x = Math.cos(Date.now() * 0.001) * 0.02;
+            },
+            autoFire() {
+                // Find nearest enemy
+                let nearest = null;
+                let minDist = CONFIG.weaponRange;
+                enemies.forEach(e => {
+                    const d = e.mesh.position.distanceTo(this.mesh.position);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearest = e;
                     }
                 });
 
-                modelCache.set(cacheKey, model);
-                assetsLoaded++;
-                updateLoadingText(`Loading... ${assetsLoaded}/${TOTAL_ASSETS_TO_LOAD}`);
-                
-                return model;
-            } catch (error) {
-                console.warn(`Failed to load ${modelName}:`, error);
-                return null;
-            }
-        }
-
-        function getModel(modelName) {
-            if (modelCache.has(modelName)) {
-                const original = modelCache.get(modelName);
-                if (original) {
-                    return original.clone();
+                if (nearest) {
+                    const dir = new THREE.Vector3().subVectors(nearest.mesh.position, this.mesh.position).normalize();
+                    projectiles.push(new Projectile(this.mesh.position.clone().add(new THREE.Vector3(0,1,0)), dir));
                 }
             }
-            return createFallbackModel(modelName);
+        };
+
+        // --- Game Logic ---
+        let enemies = [];
+        let projectiles = [];
+        let pickups = [];
+        let spawnTimer = 0;
+
+        function takeDamage(amount) {
+            state.hp -= amount;
+            document.getElementById('hp-bar').style.width = `${(state.hp / state.maxHp) * 100}%`;
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 500);
+            if (state.hp <= 0) endGame();
         }
 
-        function createFallbackModel(type) {
-            const group = new THREE.Group();
-            
-            let scale = 1;
-            let color = 0x8B4513;
-            
-            switch(type) {
-                case 'ship-pirate-small':
-                case 'player':
-                    scale = 1;
-                    color = 0xCD853F;
-                    createShipGeometry(group, scale, color);
-                    break;
-                case 'boat-row-small':
-                case 'rowboat':
-                    scale = 0.5;
-                    color = 0xA0522D;
-                    createSmallBoat(group, scale, color);
-                    break;
-                case 'ship-small':
-                case 'sloop':
-                    scale = 0.8;
-                    color = 0x8B4513;
-                    createShipGeometry(group, scale, color);
-                    break;
-                case 'ship-medium':
-                case 'frigate':
-                    scale = 1.2;
-                    color = 0x4682B4;
-                    createShipGeometry(group, scale, color);
-                    break;
-                case 'ship-large':
-                case 'galleon':
-                    scale = 1.5;
-                    color = 0x2F4F4F;
-                    createShipGeometry(group, scale, color);
-                    break;
-                case 'ship-ghost':
-                case 'ghost':
-                    scale = 1.6;
-                    color = 0x4dff9b;
-                    createGhostShip(group, scale, color);
-                    break;
-                case 'cannon-ball':
-                case 'projectile':
-                    const ballGeom = new THREE.SphereGeometry(0.25, 8, 8);
-                    const ballMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-                    const ball = new THREE.Mesh(ballGeom, ballMat);
-                    group.add(ball);
-                    break;
-                case 'chest':
-                case 'treasure':
-                    const chestGeom = new THREE.BoxGeometry(1.2, 0.8, 0.8);
-                    const chestMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
-                    const chest = new THREE.Mesh(chestGeom, chestMat);
-                    group.add(chest);
-                    break;
-                default:
-                    const defaultGeom = new THREE.BoxGeometry(1, 1, 2);
-                    const defaultMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
-                    const defaultMesh = new THREE.Mesh(defaultGeom, defaultMat);
-                    group.add(defaultMesh);
+        function collectXP(amount) {
+            state.xp += amount;
+            if (state.xp >= state.xpToNext) {
+                levelUp();
             }
-            
-            group.castShadow = true;
-            group.receiveShadow = true;
-            return group;
-        }
-
-        function createShipGeometry(group, scale, color) {
-            // Hull
-            const hullShape = new THREE.Shape();
-            hullShape.moveTo(-2.5 * scale, 0);
-            hullShape.lineTo(-2 * scale, -0.8 * scale);
-            hullShape.lineTo(2 * scale, -0.8 * scale);
-            hullShape.lineTo(2.5 * scale, 0);
-            hullShape.lineTo(2 * scale, 0.4 * scale);
-            hullShape.lineTo(-2 * scale, 0.4 * scale);
-            hullShape.closePath();
-
-            const extrudeSettings = { 
-                depth: 7 * scale, 
-                bevelEnabled: true, 
-                bevelThickness: 0.2 * scale, 
-                bevelSize: 0.2 * scale 
-            };
-            const hullGeometry = new THREE.ExtrudeGeometry(hullShape, extrudeSettings);
-            const hullMaterial = new THREE.MeshLambertMaterial({ color: color });
-            const hull = new THREE.Mesh(hullGeometry, hullMaterial);
-            hull.rotation.x = Math.PI / 2;
-            hull.position.set(0, 0, -3.5 * scale);
-            group.add(hull);
-
-            // Mast
-            const mastGeometry = new THREE.CylinderGeometry(0.15 * scale, 0.22 * scale, 9 * scale, 8);
-            const mastMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
-            const mast = new THREE.Mesh(mastGeometry, mastMaterial);
-            mast.position.set(0, 4.5 * scale, 0);
-            group.add(mast);
-
-            // Sail
-            const sailGeometry = new THREE.PlaneGeometry(5 * scale, 7 * scale);
-            const sailMaterial = new THREE.MeshLambertMaterial({ 
-                color: 0xF5F5DC, 
-                side: THREE.DoubleSide 
-            });
-            const sail = new THREE.Mesh(sailGeometry, sailMaterial);
-            sail.position.set(0.4 * scale, 5.5 * scale, 0);
-            sail.rotation.y = Math.PI / 6;
-            group.add(sail);
-
-            // Flag
-            const flagGeometry = new THREE.PlaneGeometry(1.8 * scale, 1.2 * scale);
-            const flagMaterial = new THREE.MeshLambertMaterial({ 
-                color: 0x000000, 
-                side: THREE.DoubleSide 
-            });
-            const flag = new THREE.Mesh(flagGeometry, flagMaterial);
-            flag.position.set(0, 9.2 * scale, 0);
-            group.add(flag);
-        }
-
-        function createSmallBoat(group, scale, color) {
-            const hullGeom = new THREE.BoxGeometry(2 * scale, 0.6 * scale, 4 * scale);
-            const hullMat = new THREE.MeshLambertMaterial({ color: color });
-            const hull = new THREE.Mesh(hullGeom, hullMat);
-            hull.position.y = 0.1 * scale;
-            group.add(hull);
-        }
-
-        function createGhostShip(group, scale, color) {
-            createShipGeometry(group, scale, color);
-            
-            // Make it semi-transparent
-            group.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = child.material.clone();
-                    child.material.transparent = true;
-                    child.material.opacity = 0.7;
-                    child.material.emissive = new THREE.Color(color);
-                    child.material.emissiveIntensity = 0.3;
-                }
-            });
-        }
-
-        function onAllAssetsLoaded() {
-            console.log(`✅ All ${assetsLoaded} assets loaded`);
-            
-            setTimeout(() => {
-                document.getElementById('loadingScreen').style.display = 'none';
-                document.getElementById('mainMenu').style.display = 'flex';
-                currentState = GameState.MENU;
-                
-                // Load saved skulls
-                const savedSkulls = localStorage.getItem('maelstrom_skulls');
-                if (savedSkulls) {
-                    player.skulls = parseInt(savedSkulls) || 0;
-                }
-                
-                console.log('🎮 Ready to play!');
-            }, 500);
-        }
-
-        function updateLoadingText(text) {
-            const loadingEl = document.getElementById('loadingText');
-            if (loadingEl) {
-                loadingEl.textContent = text;
-            }
-        }
-
-        function showErrorMessage(message) {
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (loadingScreen) {
-                loadingScreen.innerHTML = `
-                    <h2 style="color: #ff4444; margin-bottom: 20px;">❌ Error</h2>
-                    <p style="color: #fff; max-width: 400px; text-align: center;">${message}</p>
-                    <button class="menu-btn" onclick="location.reload()" style="margin-top: 20px;">🔄 Reload Page</button>
-                `;
-            }
-        }
-
-        // ============================================
-        // GAME LOGIC
-        // ============================================
-
-        function startGame(mode) {
-            console.log('⚓ Starting game:', mode);
-            
-            currentState = GameState.PLAYING;
-            
-            // Reset player state
-            resetPlayerState();
-            
-            // Clear entities
-            clearAllEntities();
-            
-            // Remove old player ship
-            if (playerShip) {
-                scene.remove(playerShip);
-                playerShip = null;
-            }
-            
-            // Create new player ship
-            playerShip = createPlayerShip();
-            if (playerShip) {
-                playerShip.position.set(0, 0, 0);
-                scene.add(playerShip);
-            }
-            
-            // Generate islands
-            generateIslands();
-            
-            // Update UI
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('hud').style.display = 'block';
-            
-            updateHUD();
-            console.log('🎮 Game started!');
-        }
-
-        function resetPlayerState() {
-            player.hp = player.maxHp;
-            player.doubloons = 0;
-            player.xp = 0;
-            player.level = 1;
-            player.xpToLevel = 100;
-            player.survivalTime = 0;
-            player.fleetSize = 1;
-            player.upgrades = [];
-            player.invincibleTime = 0;
-            waveIntensity = 1;
-            gameTime = 0;
-            bossActive = false;
-            bossSpawnTimer = 0;
-        }
-
-        function clearAllEntities() {
-            // Clear enemies
-            enemies.forEach(e => scene.remove(e));
-            enemies = [];
-            
-            // Clear fleet
-            playerFleet.forEach(f => scene.remove(f));
-            playerFleet = [];
-            
-            // Clear projectiles
-            cannonballs.forEach(c => scene.remove(c));
-            cannonballs = [];
-            
-            // Clear doubloons
-            doubloons.forEach(d => scene.remove(d));
-            doubloons = [];
-            
-            // Clear particles
-            particles.forEach(p => scene.remove(p));
-            particles = [];
-            
-            // Clear islands
-            islands.forEach(i => scene.remove(i));
-            islands = [];
-        }
-
-        function createPlayerShip() {
-            const shipGroup = getModel('ship-pirate-small') || createFallbackModel('player');
-            
-            shipGroup.userData = {
-                isPlayer: true,
-                type: 'player',
-                velocity: new THREE.Vector3()
-            };
-            
-            return shipGroup;
-        }
-
-        function generateIslands() {
-            const islandCount = 3;
-            
-            for (let i = 0; i < islandCount; i++) {
-                const island = createIsland();
-                const angle = (i / islandCount) * Math.PI * 2;
-                const distance = 150 + Math.random() * 100;
-                
-                island.position.set(
-                    Math.cos(angle) * distance,
-                    0,
-                    Math.sin(angle) * distance
-                );
-                
-                islands.push(island);
-                scene.add(island);
-            }
-        }
-
-        function createIsland() {
-            const islandGroup = new THREE.Group();
-            
-            // Base terrain
-            const baseGeom = new THREE.ConeGeometry(18, 4, 8);
-            const baseMat = new THREE.MeshLambertMaterial({ color: 0xe8c97d });
-            const base = new THREE.Mesh(baseGeom, baseMat);
-            islandGroup.add(base);
-            
-            // Grass layer
-            const grassGeom = new THREE.ConeGeometry(15, 2.5, 8);
-            const grassMat = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
-            const grass = new THREE.Mesh(grassGeom, grassMat);
-            grass.position.y = 2.5;
-            islandGroup.add(grass);
-            
-            // Palm trees
-            for (let i = 0; i < 4; i++) {
-                const palm = createPalmTree();
-                const angle = (i / 4) * Math.PI * 2;
-                const radius = 6 + Math.random() * 4;
-                
-                palm.position.set(
-                    Math.cos(angle) * radius,
-                    3.5,
-                    Math.sin(angle) * radius
-                );
-                palm.rotation.y = Math.random() * Math.PI * 2;
-                
-                islandGroup.add(palm);
-            }
-            
-            // Treasure chest
-            const chest = getModel('chest') || createFallbackModel('treasure');
-            chest.position.set(
-                (Math.random() - 0.5) * 8,
-                2,
-                (Math.random() - 0.5) * 8
-            );
-            chest.userData.isTreasure = true;
-            chest.userData.value = 50;
-            islandGroup.add(chest);
-            
-            islandGroup.userData.isIsland = true;
-            
-            return islandGroup;
-        }
-
-        function createPalmTree() {
-            const palmGroup = new THREE.Group();
-            
-            // Trunk
-            const trunkGeom = new THREE.CylinderGeometry(0.25, 0.4, 5, 6);
-            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-            const trunk = new THREE.Mesh(trunkGeom, trunkMat);
-            trunk.position.y = 2.5;
-            palmGroup.add(trunk);
-            
-            // Leaves
-            const leavesGeom = new THREE.SphereGeometry(2.2, 8, 8);
-            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-            const leaves = new THREE.Mesh(leavesGeom, leavesMat);
-            leaves.position.y = 5.5;
-            leaves.scale.y = 0.6;
-            palmGroup.add(leaves);
-            
-            return palmGroup;
-        }
-
-        function restartGame() {
-            document.getElementById('deathScreen').style.display = 'none';
-            startGame('classic');
-        }
-
-        function returnToMenu() {
-            document.getElementById('deathScreen').style.display = 'none';
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('mainMenu').style.display = 'flex';
-            currentState = GameState.MENU;
-            
-            clearAllEntities();
-            if (playerShip) {
-                scene.remove(playerShip);
-                playerShip = null;
-            }
-        }
-
-        function showLeaderboard() {
-            alert(`🏆 LEADERBOARD\n\n💀 Your Total Skulls: ${player.skulls}\n\nGlobal rankings coming soon!\n\nTop players will be displayed here.`);
-        }
-
-        function showUpgrades() {
-            alert(`💀 META-UPGRADES\n\nSkulls Available: ${player.skulls} 💀\n\nPermanent upgrades:\n• Hull Reinforcement (+15% HP) - 10 skulls\n• Starting Fleet (+1 Rowboat) - 20 skulls\n• Treasure Magnet (+30% pickup) - 15 skulls\n• Cannon Master (+10% damage) - 25 skulls\n• Ghost Ward (Boss delay) - 30 skulls\n\nEarn skulls by playing and surviving longer!`);
-        }
-
-        function gameOver() {
-            currentState = GameState.DEAD;
-            
-            // Calculate final stats
-            const score = Math.floor(player.doubloons * (1 + player.survivalTime / 60));
-            const skullsEarned = Math.floor(player.doubloons / 100) + Math.floor(player.survivalTime / 600);
-            
-            // Save skulls
-            player.skulls += skullsEarned;
-            localStorage.setItem('maelstrom_skulls', player.skulls.toString());
-            
-            // Update death screen
-            document.getElementById('finalTime').textContent = formatTime(player.survivalTime);
-            document.getElementById('finalScore').textContent = score.toLocaleString();
-            document.getElementById('skullsEarned').textContent = skullsEarned;
-            document.getElementById('finalFleet').textContent = player.fleetSize;
-            
-            // Show death screen
-            setTimeout(() => {
-                document.getElementById('deathScreen').style.display = 'flex';
-            }, 500);
+            document.getElementById('xp-bar').style.width = `${(state.xp / state.xpToNext) * 100}%`;
         }
 
         function levelUp() {
-            currentState = GameState.LEVEL_UP;
-            player.level++;
-            player.xp -= player.xpToLevel;
-            player.xpToLevel = Math.floor(player.xpToLevel * 1.4);
-            
-            // Generate upgrade cards
-            const cards = generateUpgradeCards();
-            displayUpgradeCards(cards);
+            state.level++;
+            state.xp = 0;
+            state.xpToNext *= 1.2;
+            state.paused = true;
+            showUpgradeScreen();
         }
 
-        function generateUpgradeCards() {
-            const allUpgrades = [
-                { name: 'Extra Cannon', desc: '+1 cannon to flagship', rarity: 'common', icon: '💥', effect: 'cannon' },
-                { name: 'Reinforce Hull', desc: '+25% Max HP', rarity: 'common', icon: '🛡️', effect: 'hp' },
-                { name: 'Recruit Rowboat', desc: 'Add rowboat to fleet', rarity: 'common', icon: '🚣', effect: 'fleet_rowboat' },
-                { name: 'Speed Boost', desc: '+12% movement speed', rarity: 'rare', icon: '⚡', effect: 'speed' },
-                { name: 'Damage Up', desc: '+20% cannon damage', rarity: 'rare', icon: '⚔️', effect: 'damage' },
-                { name: 'Press-Gang Sloop', desc: 'Add sloop to fleet', rarity: 'rare', icon: '⛵', effect: 'fleet_sloop' },
-                { name: 'Mobile Cannon', desc: '360° rotating turret', rarity: 'epic', icon: '🎯', effect: 'turret' },
-                { name: 'Stolen Sails', desc: '+30% speed boost', rarity: 'epic', icon: '🌊', effect: 'speed_epic' },
-                { name: 'Ram Prow', desc: 'Collision deals damage', rarity: 'epic', icon: '🔨', effect: 'ram' },
-                { name: 'Ghost Hull', desc: 'Phase through enemies 8s', rarity: 'legendary', icon: '👻', effect: 'ghost' },
-                { name: 'Maelstrom Vortex', desc: 'Massive AOE damage', rarity: 'legendary', icon: '🌀', effect: 'vortex' },
-                { name: 'The Flagship Arrives', desc: 'Add galleon to fleet', rarity: 'legendary', icon: '🏴‍☠️', effect: 'flagship' }
-            ];
-            
-            // Weighted random selection
-            const selected = [];
-            const weights = { common: 50, rare: 30, epic: 15, legendary: 5 };
-            
-            while (selected.length < 3) {
-                const rand = Math.random() * 100;
-                let chosenRarity;
-                
-                if (rand < 50) chosenRarity = 'common';
-                else if (rand < 80) chosenRarity = 'rare';
-                else if (rand < 95) chosenRarity = 'epic';
-                else chosenRarity = 'legendary';
-                
-                const rarityUpgrades = allUpgrades.filter(u => u.rarity === chosenRarity);
-                if (rarityUpgrades.length > 0) {
-                    const upgrade = rarityUpgrades[Math.floor(Math.random() * rarityUpgrades.length)];
-                    if (!selected.find(s => s.name === upgrade.name)) {
-                        selected.push(upgrade);
-                    }
-                }
-            }
-            
-            return selected;
-        }
+        const UPGRADES = [
+            { name: "Extra Cannon", desc: "Increase fire rate by 20%", effect: () => CONFIG.fireRate *= 0.8 },
+            { name: "Reinforced Hull", desc: "Heal 50% HP and increase Max HP", effect: () => { state.maxHp += 20; state.hp = Math.min(state.maxHp, state.hp + (state.maxHp * 0.5)); } },
+            { name: "Swift Sails", desc: "Increase movement speed", effect: () => CONFIG.playerSpeed += 0.05 },
+            { name: "Heavy Shot", desc: "Increase weapon range", effect: () => CONFIG.weaponRange += 5 },
+            { name: "Bounty Hunter", desc: "Double XP from Doubloons", effect: () => state.damageMultiplier *= 1.1 }
+        ];
 
-        function displayUpgradeCards(cards) {
-            const container = document.getElementById('upgradeCards');
+        function showUpgradeScreen() {
+            const screen = document.getElementById('level-up-screen');
+            const container = document.getElementById('upgrade-cards');
             container.innerHTML = '';
             
-            cards.forEach((card, index) => {
-                const cardEl = document.createElement('div');
-                cardEl.className = `upgrade-card ${card.rarity}`;
-                cardEl.innerHTML = `
-                    <div class="card-icon">${card.icon}</div>
-                    <div class="card-name">${card.name}</div>
-                    <div class="card-desc">${card.desc}</div>
-                    <div class="card-rarity">${card.rarity}</div>
+            // Pick 3 random
+            const shuffled = [...UPGRADES].sort(() => 0.5 - Math.random()).slice(0, 3);
+            
+            shuffled.forEach(up => {
+                const card = document.createElement('div');
+                card.className = "card-gradient w-64 p-6 rounded-xl cursor-pointer hover:scale-105 transition-transform text-white text-center";
+                card.innerHTML = `
+                    <h3 class="pirate-font text-3xl mb-2 text-yellow-400">${up.name}</h3>
+                    <p class="text-sm opacity-80">${up.desc}</p>
                 `;
-                cardEl.onclick = () => selectUpgrade(card);
-                container.appendChild(cardEl);
+                card.onclick = () => {
+                    up.effect();
+                    state.paused = false;
+                    screen.classList.add('hidden');
+                    updateHUD();
+                };
+                container.appendChild(card);
             });
             
-            document.getElementById('levelUpScreen').style.display = 'flex';
+            screen.classList.remove('hidden');
         }
 
-        function selectUpgrade(upgrade) {
-            console.log('Selected upgrade:', upgrade.name);
-            
-            // Apply upgrade effect
-            switch (upgrade.effect) {
-                case 'cannon':
-                    player.damage += 8;
-                    break;
-                case 'hp':
-                    player.maxHp = Math.floor(player.maxHp * 1.25);
-                    player.hp = Math.min(player.hp + 30, player.maxHp);
-                    break;
-                case 'fleet_rowboat':
-                    addFleetShip('rowboat');
-                    break;
-                case 'speed':
-                    player.speed *= 1.12;
-                    break;
-                case 'damage':
-                    player.damage = Math.floor(player.damage * 1.2);
-                    break;
-                case 'fleet_sloop':
-                    addFleetShip('sloop');
-                    break;
-                case 'turret':
-                    player.fireRate = Math.max(player.fireRate - 150, 400);
-                    break;
-                case 'speed_epic':
-                    player.speed *= 1.3;
-                    break;
-                case 'ram':
-                    player.upgrades.push('ram');
-                    break;
-                case 'ghost':
-                    player.upgrades.push('ghost');
-                    player.invincibleTime = 8;
-                    break;
-                case 'vortex':
-                    player.upgrades.push('vortex');
-                    activateVortex();
-                    break;
-                case 'flagship':
-                    addFleetShip('galleon');
-                    break;
-            }
-            
-            player.upgrades.push(upgrade.effect);
-            
-            // Resume game
-            document.getElementById('levelUpScreen').style.display = 'none';
-            currentState = GameState.PLAYING;
-            updateHUD();
-        }
-
-        function addFleetShip(type) {
-            let shipModel;
-            let shipType;
-            
-            switch (type) {
-                case 'rowboat':
-                    shipModel = getModel('boat-row-small') || createFallbackModel('rowboat');
-                    shipType = 'rowboat';
-                    break;
-                case 'sloop':
-                    shipModel = getModel('ship-small') || createFallbackModel('sloop');
-                    shipType = 'sloop';
-                    break;
-                case 'galleon':
-                    shipModel = getModel('ship-large') || createFallbackModel('galleon');
-                    shipType = 'galleon';
-                    break;
-                default:
-                    shipModel = createFallbackModel('rowboat');
-                    shipType = 'rowboat';
-            }
-            
-            shipModel.userData = {
-                isFleet: true,
-                type: shipType,
-                orbitAngle: (playerFleet.length * (Math.PI * 2)) / Math.max(player.fleetSize, 1),
-                orbitRadius: 10 + playerFleet.length * 2.5,
-                lastFire: 0
-            };
-            
-            playerFleet.push(shipModel);
-            scene.add(shipModel);
-            player.fleetSize++;
-        }
-
-        function activateVortex() {
-            // Visual vortex effect - damage all nearby enemies
-            const vortexRadius = 40;
-            const vortexDamage = 100;
-            
-            enemies.forEach((enemy, index) => {
-                const dist = enemy.position.distanceTo(playerShip.position);
-                if (dist < vortexRadius) {
-                    enemy.userData.hp -= vortexDamage;
-                    
-                    if (enemy.userData.hp <= 0) {
-                        destroyEnemy(enemy, index);
-                    }
-                }
-            });
-            
-            // Particle effect could be added here
-            console.log('💥 VORTEX ACTIVATED!');
-        }
-
-        // ============================================
-        // UPDATE SYSTEMS
-        // ============================================
-
-        function update(deltaTime) {
-            if (currentState !== GameState.PLAYING || !playerShip) return;
-            
-            // Clamp deltaTime to prevent huge jumps
-            deltaTime = Math.min(deltaTime, 0.1);
-            
-            gameTime += deltaTime;
-            player.survivalTime += deltaTime;
-            
-            // Update invincibility timer
-            if (player.invincibleTime > 0) {
-                player.invincibleTime -= deltaTime;
-            }
-            
-            // Update ocean
-            if (oceanMesh && oceanMesh.material.uniforms) {
-                oceanMesh.material.uniforms.time.value = gameTime;
-            }
-            
-            // Handle input
-            handlePlayerMovement(deltaTime);
-            
-            // Auto-fire cannons
-            autoFireCannons();
-            
-            // Update fleet
-            updateFleetFormation(deltaTime);
-            
-            // Spawn enemies
-            spawnEnemies(deltaTime);
-            
-            // Update enemies
-            updateEnemies(deltaTime);
-            
-            // Update projectiles
-            updateCannonballs(deltaTime);
-            
-            // Update collectibles
-            updateDoubloons(deltaTime);
-            
-            // Check collisions
-            checkCollisions();
-            
-            // Update camera
-            updateCamera(deltaTime);
-            
-            // Check level up
-            if (player.xp >= player.xpToLevel) {
-                levelUp();
-            }
-            
-            // Check boss spawn
-            checkBossSpawn(deltaTime);
-            
-            // Update HUD
-            updateHUD();
-        }
-
-        function handlePlayerMovement(deltaTime) {
-            let moveX = 0;
-            let moveZ = 0;
-            
-            // Keyboard input
-            if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
-            if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
-            if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
-            if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
-            
-            // Joystick input
-            moveX += joystickInput.x;
-            moveZ += joystickInput.y;
-            
-            // Normalize diagonal movement
-            const magnitude = Math.sqrt(moveX * moveX + moveZ * moveZ);
-            if (magnitude > 1) {
-                moveX /= magnitude;
-                moveZ /= magnitude;
-            }
-            
-            // Apply movement with momentum feel
-            if (moveX !== 0 || moveZ !== 0) {
-                const speed = player.speed * deltaTime * 60;
-                playerShip.position.x += moveX * speed;
-                playerShip.position.z += moveZ * speed;
-                
-                // Rotate ship to face direction
-                const targetAngle = Math.atan2(moveX, moveZ);
-                playerShip.rotation.y = targetAngle;
-            }
-            
-            // Keep above ocean
-            playerShip.position.y = getOceanHeight(playerShip.position.x, playerShip.position.z);
-        }
-
-        function autoFireCannons() {
-            const now = Date.now();
-            if (now - player.lastFire < player.fireRate) return;
-            if (enemies.length === 0) return;
-            
-            // Find nearest enemy
-            let nearestEnemy = null;
-            let nearestDist = Infinity;
-            
-            enemies.forEach(enemy => {
-                const dist = playerShip.position.distanceTo(enemy.position);
-                if (dist < nearestDist && dist < 90) {
-                    nearestDist = dist;
-                    nearestEnemy = enemy;
-                }
-            });
-            
-            if (nearestEnemy) {
-                fireCannonball(playerShip.position, nearestEnemy.position, false);
-                player.lastFire = now;
-                
-                // Fleet ships also fire
-                playerFleet.forEach(fleetShip => {
-                    if (now - (fleetShip.userData.lastFire || 0) > 1200) {
-                        fireCannonball(fleetShip.position, nearestEnemy.position, false);
-                        fleetShip.userData.lastFire = now;
-                    }
-                });
-            }
-        }
-
-        function fireCannonball(from, to, isEnemy) {
-            const ball = getModel('cannon-ball') || createFallbackModel('projectile');
-            ball.position.copy(from);
-            ball.position.y += 1.5;
-            
-            const direction = new THREE.Vector3().subVectors(to, from).normalize();
-            ball.userData = {
-                velocity: direction.multiplyScalar(isEnemy ? 0.35 : 0.45),
-                damage: isEnemy ? 12 : player.damage,
-                isEnemy: isEnemy,
-                lifetime: 0
-            };
-            ball.userData.velocity.y = 0.12; // Arc upward
-            
-            cannonballs.push(ball);
-            scene.add(ball);
-        }
-
-        function updateFleetFormation(deltaTime) {
-            playerFleet.forEach((ship, index) => {
-                const angle = ship.userData.orbitAngle + (gameTime * 0.25);
-                const radius = ship.userData.orbitRadius;
-                
-                const targetX = playerShip.position.x + Math.cos(angle) * radius;
-                const targetZ = playerShip.position.z + Math.sin(angle) * radius;
-                
-                // Smooth follow
-                ship.position.x += (targetX - ship.position.x) * 0.06;
-                ship.position.z += (targetZ - ship.position.z) * 0.06;
-                ship.position.y = getOceanHeight(ship.position.x, ship.position.z);
-                
-                // Face nearest enemy or outward
-                let nearestDist = Infinity;
-                let nearestEnemy = null;
-                
-                enemies.forEach(enemy => {
-                    const dist = ship.position.distanceTo(enemy.position);
-                    if (dist < nearestDist) {
-                        nearestDist = dist;
-                        nearestEnemy = enemy;
-                    }
-                });
-                
-                if (nearestEnemy && nearestDist < 65) {
-                    const angle = Math.atan2(
-                        nearestEnemy.position.x - ship.position.x,
-                        nearestEnemy.position.z - ship.position.z
-                    );
-                    ship.rotation.y = angle;
-                } else {
-                    ship.rotation.y = angle + Math.PI / 2;
-                }
-            });
-        }
-
-        function spawnEnemies(deltaTime) {
-            // Scale intensity over time
-            waveIntensity = 1 + (gameTime / 100);
-            
-            // Spawn rate increases
-            const spawnInterval = Math.max(400, 1800 - gameTime * 1.5);
-            const spawnChance = deltaTime * (1000 / spawnInterval) * waveIntensity;
-            
-            if (Math.random() < spawnChance) {
-                // Determine enemy type based on time
-                let type = 'rowboat';
-                const rand = Math.random() * 100;
-                
-                if (gameTime > 600 && rand < 4) type = 'galleon';
-                else if (gameTime > 300 && rand < 12) type = 'frigate';
-                else if (gameTime > 120 && rand < 30) type = 'sloop';
-                else type = 'rowboat';
-                
-                spawnEnemy(type);
-            }
-        }
-
-        function spawnEnemy(type) {
-            let enemyModel;
-            let hp, speed, damage, scale;
-            
-            switch (type) {
-                case 'rowboat':
-                    enemyModel = getModel('boat-row-small') || createFallbackModel('rowboat');
-                    hp = 25;
-                    speed = 0.09;
-                    damage = 6;
-                    break;
-                case 'sloop':
-                    enemyModel = getModel('ship-small') || createFallbackModel('sloop');
-                    hp = 60;
-                    speed = 0.07;
-                    damage = 12;
-                    break;
-                case 'frigate':
-                    enemyModel = getModel('ship-medium') || createFallbackModel('frigate');
-                    hp = 140;
-                    speed = 0.05;
-                    damage = 22;
-                    break;
-                case 'galleon':
-                    enemyModel = getModel('ship-large') || createFallbackModel('galleon');
-                    hp = 280;
-                    speed = 0.035;
-                    damage = 38;
-                    break;
-                case 'ghost':
-                    enemyModel = getModel('ship-ghost') || createFallbackModel('ghost');
-                    hp = 550;
-                    speed = 0.055;
-                    damage = 52;
-                    break;
-                default:
-                    enemyModel = createFallbackModel('rowboat');
-                    hp = 30;
-                    speed = 0.07;
-                    damage = 8;
-            }
-            
-            // Spawn at edge of screen
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 85 + Math.random() * 35;
-            
-            enemyModel.position.set(
-                playerShip.position.x + Math.cos(angle) * distance,
-                0,
-                playerShip.position.z + Math.sin(angle) * distance
-            );
-            
-            enemyModel.userData = {
-                isEnemy: true,
-                type: type,
-                hp: hp,
-                maxHp: hp,
-                speed: speed,
-                damage: damage,
-                lastFire: 0,
-                fireRate: 2200
-            };
-            
-            enemies.push(enemyModel);
-            scene.add(enemyModel);
-        }
-
-        function updateEnemies(deltaTime) {
-            if (!playerShip) return;
-            
-            enemies.forEach((enemy, index) => {
-                // Move toward player
-                const direction = new THREE.Vector3()
-                    .subVectors(playerShip.position, enemy.position)
-                    .normalize();
-                
-                enemy.position.x += direction.x * enemy.userData.speed * deltaTime * 60;
-                enemy.position.z += direction.z * enemy.userData.speed * deltaTime * 60;
-                enemy.position.y = getOceanHeight(enemy.position.x, enemy.position.z);
-                
-                // Face player
-                enemy.rotation.y = Math.atan2(direction.x, direction.z);
-                
-                // Enemy firing
-                const now = Date.now();
-                const distToPlayer = enemy.position.distanceTo(playerShip.position);
-                
-                if (now - enemy.userData.lastFire > enemy.userData.fireRate && distToPlayer < 65) {
-                    fireCannonball(enemy.position, playerShip.position, true);
-                    enemy.userData.lastFire = now;
-                }
-                
-                // Remove if too far
-                if (distToPlayer > 220) {
-                    scene.remove(enemy);
-                    enemies.splice(index, 1);
-                }
-            });
-        }
-
-        function updateCannonballs(deltaTime) {
-            cannonballs.forEach((ball, index) => {
-                // Apply velocity with gravity
-                ball.position.add(ball.userData.velocity.clone().multiplyScalar(deltaTime * 60));
-                ball.userData.velocity.y -= 0.008; // Gravity
-                ball.userData.lifetime += deltaTime;
-                
-                // Rotate for visual effect
-                ball.rotation.x += deltaTime * 6;
-                ball.rotation.z += deltaTime * 4;
-                
-                // Remove if too old or hit water
-                if (ball.userData.lifetime > 4 || ball.position.y < -1) {
-                    scene.remove(ball);
-                    cannonballs.splice(index, 1);
-                }
-            });
-        }
-
-        function updateDoubloons(deltaTime) {
-            doubloons.forEach((coin, index) => {
-                // Bobbing animation
-                coin.position.y = getOceanHeight(coin.position.x, coin.position.z) + 0.6 + 
-                                  Math.sin(gameTime * 3.5 + index * 2) * 0.25;
-                coin.rotation.y += deltaTime * 2.5;
-                coin.userData.lifetime += deltaTime;
-                
-                // Remove after timeout
-                if (coin.userData.lifetime > 18) {
-                    scene.remove(coin);
-                    doubloons.splice(index, 1);
-                }
-            });
-        }
-
-        function checkCollisions() {
-            if (!playerShip) return;
-            
-            // Cannonballs vs targets
-            cannonballs.forEach((ball, ballIndex) => {
-                if (ball.userData.isEnemy) {
-                    // Enemy ball hitting player
-                    if (player.invincibleTime <= 0 && 
-                        ball.position.distanceTo(playerShip.position) < 3.5) {
-                        player.hp -= ball.userData.damage;
-                        showDamageEffect();
-                        scene.remove(ball);
-                        cannonballs.splice(ballIndex, 1);
-                        
-                        if (player.hp <= 0) {
-                            gameOver();
-                        }
-                    }
-                } else {
-                    // Player ball hitting enemies
-                    for (let i = enemies.length - 1; i >= 0; i--) {
-                        const enemy = enemies[i];
-                        if (ball.position.distanceTo(enemy.position) < 4) {
-                            enemy.userData.hp -= ball.userData.damage;
-                            scene.remove(ball);
-                            cannonballs.splice(ballIndex, 1);
-                            
-                            if (enemy.userData.hp <= 0) {
-                                destroyEnemy(enemy, i);
-                            }
-                            break;
-                        }
-                    }
-                }
-            });
-            
-            // Player collecting doubloons
-            for (let i = doubloons.length - 1; i >= 0; i--) {
-                const coin = doubloons[i];
-                if (coin.position.distanceTo(playerShip.position) < 4.5) {
-                    player.doubloons += coin.userData.value;
-                    player.xp += coin.userData.value * 10;
-                    scene.remove(coin);
-                    doubloons.splice(i, 1);
-                }
-            }
-            
-            // Collision with enemies
-            enemies.forEach(enemy => {
-                const dist = enemy.position.distanceTo(playerShip.position);
-                if (dist < 5 && player.invincibleTime <= 0) {
-                    player.hp -= enemy.userData.damage * 0.08;
-                    showDamageEffect();
-                    
-                    if (player.upgrades.includes('ram')) {
-                        enemy.userData.hp -= 8;
-                    }
-                    
-                    if (player.hp <= 0) {
-                        gameOver();
-                    }
-                }
-            });
-        }
-
-        function destroyEnemy(enemy, index) {
-            // Drop doubloons
-            const dropCount = Math.floor(Math.random() * 6) + 2;
-            for (let i = 0; i < dropCount; i++) {
-                const coin = createDoubloon(1);
-                coin.position.copy(enemy.position);
-                coin.position.x += (Math.random() - 0.5) * 5;
-                coin.position.z += (Math.random() - 0.5) * 5;
-                doubloons.push(coin);
-                scene.add(coin);
-            }
-            
-            // XP reward
-            player.xp += enemy.userData.maxHp;
-            
-            // Chance for treasure drop
-            if (Math.random() < 0.12 || ['galleon', 'ghost'].includes(enemy.userData.type)) {
-                const treasureCoin = createDoubloon(10);
-                treasureCoin.position.copy(enemy.position);
-                treasureCoin.userData.value = 10;
-                doubloons.push(treasureCoin);
-                scene.add(treasureCoin);
-            }
-            
-            // Remove enemy
-            scene.remove(enemy);
-            enemies.splice(index, 1);
-        }
-
-        function createDoubloon(value) {
-            const geom = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 16);
-            const mat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
-            const coin = new THREE.Mesh(geom, mat);
-            coin.rotation.x = Math.PI / 2;
-            coin.userData = { value: value, lifetime: 0 };
-            return coin;
-        }
-
-        function checkBossSpawn(deltaTime) {
-            const minutes = Math.floor(gameTime / 60);
-            
-            // Boss spawns at minutes 8, 16, 24
-            if ((minutes === 8 || minutes === 16 || minutes === 24) && !bossActive) {
-                bossActive = true;
-                showBossWarning();
-                
-                // Spawn boss after warning
-                setTimeout(() => {
-                    spawnBoss();
-                    document.getElementById('bossWarning').style.display = 'none';
-                }, 8000);
-            }
-        }
-
-        function showBossWarning() {
-            document.getElementById('bossWarning').style.display = 'block';
-        }
-
-        function spawnBoss() {
-            const boss = getModel('ship-ghost') || createFallbackModel('ghost');
-            
-            const angle = Math.random() * Math.PI * 2;
-            boss.position.set(
-                playerShip.position.x + Math.cos(angle) * 110,
-                0,
-                playerShip.position.z + Math.sin(angle) * 110
-            );
-            
-            boss.userData = {
-                isEnemy: true,
-                type: 'ghost',
-                hp: 550,
-                maxHp: 550,
-                speed: 0.055,
-                damage: 52,
-                lastFire: 0,
-                fireRate: 1800,
-                isBoss: true
-            };
-            
-            enemies.push(boss);
-            scene.add(boss);
-            
-            console.log('👻 GHOST SHIP BOSS SPAWNED!');
-        }
-
-        function showDamageEffect() {
-            const flash = document.getElementById('damageFlash');
-            flash.style.opacity = '1';
-            setTimeout(() => {
-                flash.style.opacity = '0';
-            }, 100);
-        }
-
-        function updateCamera(deltaTime) {
-            if (!playerShip) return;
-            
-            // Smooth follow
-            const targetX = playerShip.position.x;
-            const targetZ = playerShip.position.z + 32;
-            const targetY = 45;
-            
-            camera.position.x += (targetX - camera.position.x) * 0.04;
-            camera.position.y += (targetY - camera.position.y) * 0.04;
-            camera.position.z += (targetZ - camera.position.z) * 0.04;
-            
-            camera.lookAt(playerShip.position.x, 0, playerShip.position.z);
-        }
-
-        function getOceanHeight(x, z) {
-            // Approximate ocean height based on wave shader
-            return Math.sin(x * 0.015 + gameTime * 0.25) * 1.5 +
-                   Math.cos(z * 0.04 + gameTime * 0.4) * 0.8 +
-                   Math.sin(x * 0.08 + gameTime * 0.6) * 0.4;
+        function spawnDoubloon(pos) {
+            pickups.push(new Doubloon(pos.clone()));
         }
 
         function updateHUD() {
-            // HP Bar
-            const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
-            document.getElementById('hpBar').style.width = `${hpPercent}%`;
-            document.getElementById('hpText').textContent = Math.ceil(Math.max(0, player.hp));
-            document.getElementById('maxHpText').textContent = player.maxHp;
-            
-            // Timer
-            document.getElementById('timer').textContent = formatTime(player.survivalTime);
-            if (player.survivalTime >= 1500) {
-                document.getElementById('timer').classList.add('warning');
-            }
-            
-            // Stats
-            document.getElementById('doubloons').textContent = `${player.doubloons} 💰`;
-            document.getElementById('level').textContent = player.level;
-            
-            // XP Bar
-            const xpPercent = Math.min(100, (player.xp / player.xpToLevel) * 100);
-            document.getElementById('xpBar').style.width = `${xpPercent}%`;
-            
-            // Fleet icons
-            let fleetHTML = '⛵';
-            for (let i = 1; i < player.fleetSize; i++) {
-                fleetHTML += ' 🚢';
-            }
-            document.getElementById('fleetIcons').textContent = fleetHTML;
+            document.getElementById('hp-bar').style.width = `${(state.hp / state.maxHp) * 100}%`;
+            const mins = Math.floor(state.time / 60);
+            const secs = Math.floor(state.time % 60);
+            document.getElementById('game-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        function endGame() {
+            state.running = false;
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('death-screen').classList.remove('hidden');
+            document.getElementById('final-time').innerText = document.getElementById('game-timer').innerText;
+            document.getElementById('final-score').innerText = state.score;
         }
 
-        // ============================================
-        // EVENT LISTENERS
-        // ============================================
-
-        function setupEventListeners() {
-            // Keyboard events
-            window.addEventListener('keydown', (e) => {
-                keys[e.code] = true;
-                
-                // Quick card selection during level up
-                if (currentState === GameState.LEVEL_UP) {
-                    if (e.code === 'Digit1') selectCardByIndex(0);
-                    if (e.code === 'Digit2') selectCardByIndex(1);
-                    if (e.code === 'Digit3') selectCardByIndex(2);
-                    if (e.code === 'Escape') {
-                        document.getElementById('levelUpScreen').style.display = 'none';
-                        currentState = GameState.PLAYING;
-                    }
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                keys[e.code] = false;
-            });
-
-            // Window resize
-            window.addEventListener('resize', () => {
-                if (camera && renderer) {
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                }
-            });
-
-            // Touch/joystick controls
-            setupJoystickControls();
-            
-            // Prevent context menu on long press
-            window.addEventListener('contextmenu', (e) => e.preventDefault());
-        }
-
-        function setupJoystickControls() {
-            const base = document.getElementById('joystickBase');
-            const stick = document.getElementById('joystickStick');
-            
-            if (!base || !stick) return;
-            
-            let active = false;
-            const maxDistance = 35;
-            
-            const handleStart = (e) => {
-                e.preventDefault();
-                active = true;
-            };
-            
-            const handleMove = (e) => {
-                if (!active) return;
-                e.preventDefault();
-                
-                const rect = base.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                
-                const touch = e.touches ? e.touches[0] : e;
-                let dx = touch.clientX - centerX;
-                let dy = touch.clientY - centerY;
-                
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance > maxDistance) {
-                    dx = (dx / distance) * maxDistance;
-                    dy = (dy / distance) * maxDistance;
-                }
-                
-                stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-                
-                joystickInput.x = dx / maxDistance;
-                joystickInput.y = dy / maxDistance;
-            };
-            
-            const handleEnd = (e) => {
-                e.preventDefault();
-                active = false;
-                stick.style.transform = 'translate(-50%, -50%)';
-                joystickInput.x = 0;
-                joystickInput.y = 0;
-            };
-            
-            // Touch events
-            base.addEventListener('touchstart', handleStart, { passive: false });
-            base.addEventListener('touchmove', handleMove, { passive: false });
-            base.addEventListener('touchend', handleEnd, { passive: false });
-            base.addEventListener('touchcancel', handleEnd, { passive: false });
-            
-            // Mouse events (for testing on desktop)
-            base.addEventListener('mousedown', handleStart);
-            window.addEventListener('mousemove', handleMove);
-            window.addEventListener('mouseup', handleEnd);
-        }
-
-        function selectCardByIndex(index) {
-            const cards = document.querySelectorAll('.upgrade-card');
-            if (cards[index]) {
-                cards[index].click();
-            }
-        }
-
-        // ============================================
-        // RENDER LOOP
-        // ============================================
-
+        // --- Main Loop ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            const deltaTime = clock.getDelta();
-            
-            update(deltaTime);
-            
-            if (renderer && scene && camera) {
+            if (!state.running || state.paused) {
+                // Still render but don't update logic
                 renderer.render(scene, camera);
+                return;
             }
+
+            // Logic
+            state.time += 1/60;
+            updateHUD();
+
+            player.update();
+            camera.position.lerp(new THREE.Vector3(player.mesh.position.x, 40, player.mesh.position.z + 40), 0.05);
+            camera.lookAt(player.mesh.position);
+
+            // Spawning
+            spawnTimer += 1;
+            if (spawnTimer > 120) { // Every 2 seconds
+                enemies.push(new Enemy(Math.random() > 0.8 ? 'ship-medium.glb' : 'ship-small.glb'));
+                spawnTimer = 0;
+            }
+
+            enemies.forEach(e => e.update());
+            projectiles.forEach(p => {
+                p.update();
+                // Collision check
+                enemies.forEach(e => {
+                    if (p.mesh.position.distanceTo(e.mesh.position) < 3) {
+                        e.hp -= 20;
+                        if (e.hp <= 0) e.die();
+                        p.destroy();
+                    }
+                });
+            });
+            pickups.forEach(p => p.update());
+
+            // Ocean movement
+            const time = Date.now() * 0.001;
+            const pos = ocean.geometry.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const z = pos.getZ(i);
+                // Simple wave math
+                const y = Math.sin(x * 0.1 + time) * 0.5 + Math.cos(z * 0.1 + time) * 0.5;
+                pos.setY(i, y);
+            }
+            pos.needsUpdate = true;
+
+            renderer.render(scene, camera);
         }
 
-        // ============================================
-        // STARTUP
-        // ============================================
+        // --- Input Handling ---
+        window.addEventListener('keydown', e => state.keys[e.code] = true);
+        window.addEventListener('keyup', e => state.keys[e.code] = false);
 
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('🏴‍☠️ MAELSTROM Loading...');
-            initGLTFLoader();
-            init();
+        // Joystick Handling
+        const jContainer = document.getElementById('joystick-container');
+        const jKnob = document.getElementById('joystick-knob');
+        let startX, startY;
+
+        jContainer.addEventListener('touchstart', e => {
+            state.joystick.active = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
         });
 
-        // Fallback if DOMContentLoaded already fired
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            console.log('🏴‍☠️ MAELSTROM Loading (fallback)...');
-            initGLTFLoader();
-            init();
-        }
+        window.addEventListener('touchmove', e => {
+            if (!state.joystick.active) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
+            const angle = Math.atan2(dy, dx);
+            
+            const lx = Math.cos(angle) * dist;
+            const ly = Math.sin(angle) * dist;
+            
+            jKnob.style.transform = `translate(${lx}px, ${ly}px)`;
+            state.joystick.x = lx / 40;
+            state.joystick.y = ly / 40;
+        });
+
+        window.addEventListener('touchend', () => {
+            state.joystick.active = false;
+            state.joystick.x = 0;
+            state.joystick.y = 0;
+            jKnob.style.transform = `translate(0px, 0px)`;
+        });
+
+        // --- Start Game ---
+        document.getElementById('start-btn').onclick = () => {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            state.running = true;
+        };
+
+        window.onload = async () => {
+            await loadAssets();
+            player.init();
+            animate();
+        };
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
+
